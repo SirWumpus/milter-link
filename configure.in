@@ -1,0 +1,145 @@
+#
+# $OpenBSD$
+#
+
+#######################################################################
+#	Thus it begins...
+#######################################################################
+
+AC_INIT(milter-link, 0.9, [Anthony Howe <achowe@snert.com>])
+
+dnl The autoconf version I learned to deal with.
+AC_PREREQ(2.59)
+
+dnl Yes I wrote this mess.
+SNERT_INIT(MILTER, [Copyright 2006, 2008 by Anthony Howe. All rights reserved.])
+
+AC_SUBST(snert_milter_t_equate, 'C:10s;R:1m;E:5m')
+
+AC_SUBST(rel_incdir, '../../include')
+AC_SUBST(rel_libdir, '../../lib')
+AC_SUBST(rel_tardir, '../../../..')
+
+#######################################################################
+#	Setup paths
+#######################################################################
+
+# The total perspective vortex "You are here..."
+AC_CONFIG_SRCDIR($PACKAGE_TARNAME.c)
+
+#######################################################################
+#	Auxliary files to be modified later
+#######################################################################
+
+AC_CONFIG_HEADERS(config.h)
+AC_CONFIG_FILES(manual.shtml)
+AC_CONFIG_FILES(startup.sh)
+AC_CONFIG_FILES(sample.mc)
+AC_CONFIG_FILES(install.sh)
+AC_CONFIG_FILES(makefile)
+
+#######################################################################
+#	Configuration options: settings
+#######################################################################
+
+SNERT_OPTION_ENABLE_RUN_USER(milter)
+SNERT_OPTION_ENABLE_RUN_GROUP(milter)
+SNERT_OPTION_ENABLE_PID('${localstatedir}/run/milter/${PACKAGE_NAME}.pid')
+SNERT_OPTION_ENABLE_SOCKET('${localstatedir}/run/milter/${PACKAGE_NAME}.socket')
+
+#######################################################################
+#	Configuration options: packages
+#######################################################################
+
+dnl SNERT_OPTION_WITH_DB
+SNERT_OPTION_WITH_SENDMAIL
+
+#######################################################################
+#	Load LibSnert Configuration
+#######################################################################
+
+if test -f '../lib/version.sh' ; then
+	snert_libsnert=yes
+	. '../lib/version.sh'
+
+	AC_SUBST(CC)
+	AC_SUBST(CC_O)
+	AC_SUBST(CC_E)
+	AC_SUBST(CFLAGS)
+	AC_SUBST(LDFLAGS)
+	AC_SUBST(ARCHIVE)
+	AC_SUBST(COMPILE)
+	AC_SUBST(RANLIB)
+	AC_SUBST(LIBEXT)
+	AC_SUBST(OBJEXT)
+	AC_SUBST(EXEEXT)
+	AC_SUBST(AUTOCONF)
+	AC_SUBST(MD5SUM)
+	AC_SUBST(TAR_I)
+
+	AC_SUBST(HAVE_LIB_DB)
+	AC_SUBST(HAVE_LIB_RT)
+	AC_SUBST(HAVE_LIB_MILTER)
+	AC_SUBST(HAVE_LIB_PTHREAD)
+	AC_SUBST(HAVE_LIB_SQLITE3)
+
+	if test "X${HAVE_LIB_PTHREAD}" = 'X' ; then
+		echo
+		echo '***************************************************************'
+		echo "       Sendmail milters require POSIX thread support."
+		echo '***************************************************************'
+		echo
+		exit 1
+	fi
+	if test "X${HAVE_LIB_MILTER}" = 'X' ; then
+		echo
+		echo '***************************************************************'
+		echo "Oi! You must install Sendmail's libmilter and associated C"
+		echo 'headers first, then reconfigure and rebuild LibSnert again,'
+		echo 'before reconfiguring and building this milter.'
+		echo '***************************************************************'
+		echo
+		exit 1
+	fi
+
+	LIBS="${LIBS} ${HAVE_LIB_MILTER} ${HAVE_LIB_DB} ${HAVE_LIB_SQLITE3} ${HAVE_LIB_RT} ${HAVE_LIB_PTHREAD}"
+else
+	snert_libsnert=no
+	echo
+	echo '***************************************************************'
+	echo 'Oi! You must download, configure, and build LibSnert first!'
+	echo '***************************************************************'
+	echo
+fi
+
+#######################################################################
+#	Generate output.
+#######################################################################
+
+echo
+echo "Generating files..."
+echo
+AC_OUTPUT()
+
+echo
+echo $PACKAGE_NAME/$package_major.$package_minor.$package_build
+echo $package_copyright
+echo
+AC_MSG_RESULT([  Platform..............: $platform $CC])
+AC_MSG_RESULT([  LibSnert..............: $snert_libsnert])
+AC_MSG_RESULT([  --prefix..............: $prefix])
+AC_MSG_RESULT([  --datadir.............: $datadir])
+AC_MSG_RESULT([  --localstatedir.......: $localstatedir])
+AC_MSG_RESULT([  --exec_prefix.........: $exec_prefix])
+AC_MSG_RESULT([  --sbindir.............: $sbindir])
+AC_MSG_RESULT([  --libexecdir..........: $libexecdir])
+AC_MSG_RESULT([  --enable-run-user.....: $enable_run_user])
+AC_MSG_RESULT([  --enable-run-group....: $enable_run_group])
+AC_MSG_RESULT([  --enable-pid..........: $snert_pid_file])
+AC_MSG_RESULT([  --enable-socket.......: $snert_socket_file])
+AC_MSG_RESULT([  CFLAGS................: $CFLAGS])
+AC_MSG_RESULT([  LDFLAGS...............: $LDFLAGS])
+AC_MSG_RESULT([  LIBS..................: $LIBS])
+echo
+
+

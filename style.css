@@ -1,0 +1,121 @@
+/*
+ * Copyright 2002, 2006 by Anthony Howe. All rights reserved.
+ *
+ * $OpenBSD$ 
+ */
+
+/*
+body {
+	background-color: #4B748A;
+}
+*/
+table {
+	background-color: #ffffff;
+}
+
+.normal, body, p, ul, td {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-size: 11pt;	
+/*
+	color: #ffffff;
+	background-color: #4B748A;
+*/
+	text-align: justify;
+}
+.small {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-size: 8pt;
+}
+.copyright {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-size: 9pt;
+}
+.big, h3 {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-size: 12pt;
+}
+.large, h2 {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-weight: normal;
+	font-size: 16pt;
+}
+.huge, h1 {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-size: 26pt;
+}
+.title {
+	font-family: serif;
+	font-weight: bold;
+	font-size: 24pt;
+/*	color: #3099ff; */
+	color: #0668B2;
+}
+dt {
+	font-family: monospace;
+}
+dd {
+	text-align: justify;
+	margin: 0 0 20px 40px;
+}
+dt tt {
+	text-align: left;
+}
+a {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 10pt;
+}
+a:link {
+	color: #0000ff;
+}
+a:visited {
+	color: #0000ff;
+}
+a:hover {
+	color: #ff0000;
+}
+
+.syntax {
+	font-family: monospace;
+	font-weight: normal;
+	font-size: 11pt;
+	color:#000080;
+}
+.param {
+	color:#0000cc;
+	font-family: monospace;
+	font-style: italic;
+	font-weight: normal;
+	font-size: 11pt;
+}
+
+.warn {
+	color:#cc0000;
+	font-style: italic;
+}
+
+.note {
+	color:#990000;
+	font-style: italic;
+}
+.tline {
+	border-collapse: collapse;
+	border-top: 1px solid;
+	border-color: #999999;
+}
+.bline {
+	border-collapse: collapse;
+	border-bottom: 1px solid;
+	border-color: #999999;
+}
+.lline {
+	border-collapse: collapse;
+	border-left: 1px solid;
+	border-color: #999999;
+}
+.rline {
+	border-collapse: collapse;
+	border-right: 1px solid;
+	border-color: #999999;
+}

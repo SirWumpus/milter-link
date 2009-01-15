@@ -1,0 +1,183 @@
+CHANGES
+-------
+
+The major number changes for such things as code rewrites, changes in
+syntax, and/or dramatic changes in functionality. The minor number
+changes for corrections, enhancements, etc. made to the code. There
+is no set schedule for releases.
+
+--TODO--
+
+   ?	Add http-proxy= option for +test-links. Requested by Quentin
+   	Campbell.
+
+   ?	Add support for list codes (vs. bit masks), a la SpamHaus.
+
+   ?	Add support for "actions per bit", ie. tag, discard, reject.
+   	Requested by Alex Broens.
+
+--0.9--
+
+   +	Requires LibSnert 1.70
+
+   !	Conversion to the improved URI and MIME APIs.
+
+   !	Conversion to using the PDQ API for DNS lookups.
+
+   +	Added ns-bl list option.
+
+   -	Removed text-vs-inline. This was previously handled archaically
+   	in the old URI/MIME parser. The newer MIME parser remains
+   	independant of such things, leaving it up to call back handlers.
+   	Currently no plans to re-implement.
+
+   !	testUri: body: REJECT didn't work. data->policy had to be set to
+	'r' of the SMDB_ACCESSS_REJECT case, otherwise filterEndMessage
+	would not apply the rejection. Reported by Michael Grant.
+
+--0.8--
+
+   +	Requires LibSnert 1.68
+
+   +	Added access.samples, which contains a initial list of domains
+   	that should not be queried as they tend to be good players.
+   	These entries should be added to the access database.
+
+   !	Added a string macro for "black listed URL host %s by %s" so
+	that it can be more easily changed at compile time. Requested
+	Alex Broens.
+
+--0.7--
+
+   +	Requires LibSnert 1.66
+
+   !	Fixed to find URI at the end of a message that does not end
+   	with a newline, possibly leaving a URI in the MIME hold buffer
+   	to parse. Reported by Jim Hermann.
+
+   !	filterHeader() refetches the queue-id macro. Postfix doesn't set
+   	the queue-id until DATA.
+
+--0.6--
+
+   !	Fixed possible off by one error for body chunks less than 20
+   	bytes. Reported by Ben Lentz.
+
+--0.5--
+
+   !	Corrections of compiler warning for gcc version 4.1.0 20060304
+	and 64-bit CPU, which is rather pedantic about char * vs
+	unsigned char * issues.
+
+--0.4.22--
+
+   !	Fixed compiler warning on some systems concerning:
+   	786: warning: large integer implicitly truncated to unsigned type
+
+--0.4--
+
+   +	Requires LibSnert 1.63.
+
+   !	testURI log message demoted from TRACE to DEBUG.
+
+   -	Dropped policy=later since RFC 2821 4.1.1.4 DATA paragraph 4
+   	states that its not possible to return partial failure after
+   	receiving the message; either accept or reject.
+
+   -	Dropped uri-implicit-domain-min-dots in favour of a constant
+   	value of 2 for MIME content filtering. A value of one can
+   	result in too many false positives.
+
+   !	The workspace subject header buffer was not reset to an empty
+   	string at the start of each mail transaction. If a message had
+   	no Subject header, then the milter would fail to add a tagged
+   	subject header in the event it was identified as spam. Reported
+   	by Larry Vaden.
+
+   !	The documentation for milter-link-body when walk-about after
+   	version 0.1.
+
+   !	Moved milter-link-auth from before milter-link-from to just after.
+
+   +	access-db now supports socket-map, flat-file, and SQLite3
+	lookups in addition to Berkeley DB. The SQLite3 behaviour
+	can be disabled via LibSnert's ./configure script.
+
+   !	Rejection based on access-db blacklisting now disabled. Some
+	users prefer leaving blacklisting upto Sendmail and not the
+	milter. Reported by Derek Balling and others.
+
+  !!	filterBody(): Fixed obsecure bug when the message content is
+	less than 20 bytes long, adding a terminating NUL to the body
+	chunk for the trace log output actually overwrote off the end
+	of a dynamic buffer on some Linux systems causing the milter
+	to crash. Reported by Martin Lathoud.
+
+--0.3--
+
+  !!	License 1.4 which provides additional details with regards to
+  	possible license controls used, the possibility of "phone
+  	home code" and its general contents, and related privacy
+  	statement.
+
+   +	Add check for filterOpen() got NULL socket address pointer
+	passed to filterOpen() which inidicates an unsupported address
+	type. The connection is simply accepted to bypass the milter.
+
+   +	Add a bit-mask facility to handle aggregate lists like
+   	multi.surbl.org. For example:
+
+   	  uribl=multi.surbl.org/10,uribl.com
+
+   +	Added policy-links for +test-links.
+
+
+--0.2--
+
+   +	Requires LibSnert 1.61.
+
+  !!	Complete replacement of option specification and no backwards.
+	compatibility. The newer format allows for better integration
+	of previously undocumented libsnert options and for the
+	inclusion of future enhancements.
+
+   +	Added -text-vs-inline option for to test for empty text/plain
+	vs. inline content.
+
+   +	Added -test-sub-domains option to test sub-domains of a URI.
+
+   !	The previous -d option has been broken into two different
+	options uri-bl= and dns-bl= to remove internal tests to
+	distinguish between spamhaus.org and others. This should
+	allows for other IP based DBS BL to be used.
+
+   !	Many improvements made to uri.c in particular uriHttpOrigin();
+	see LibSnert 1.61 changes.
+
+   !	Fixed bug in mimeGetUri() boundary handling code that could
+	cause a change in MIME content-type inappropiately. Reported
+	by Ken Anderson .
+
+--0.1--
+
+   +	Requires LibSnert 1.60.
+
+   +	Supports multi.surbl.org and sbl-xbl.spamhaus.org query
+   	formats.
+
+   + 	On-the-fly processing of multipart MIME, quoted-printable,
+   	and Base64 decoding.
+
+   +	Handles parsing of possible links missing an http:// prefix.
+	If it looks like a FQDN, then try to test it.
+
+   +	Handles processing of redirectors like:
+
+   	http://autotrader.com/redirect/redirector_link.jsp?to_url=http://ic.fm0rt.com
+
+   	http://translate.google.com/translate?u=www.fsl.com&langpair=en%7Cen&hl=en
+
+	http://ad.doubleclick.net/clk;29825968;12395550;w?http://www.bocajava.com/referral.do?promo=ediets0027text
+
+
+

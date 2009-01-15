@@ -1,0 +1,1232 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN">
+<!-- $OpenBSD$ -->
+<html>
+<head>
+<title>
+SnertSoft - @PACKAGE_NAME@/@PACKAGE_VERSION@ for Sendmail
+</title>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<meta name="keywords" content="Sendmail milter URI URL blacklist SURBL URIBL junk mail filter antispam anti spam http mailto" />
+<meta name="description" content="Extracts URIs from mail message and checks it against one or more URI blacklists." />
+<link rel="stylesheet" type="text/css" href="./style.css" />
+<script language="JavaScript" type="text/javascript" src="./mailto.js"></script>
+</head>
+
+<body>
+<div align="center">
+<table cellpadding="0" cellspacing="0" border="0" width="700" style="padding: 0px 10px 0px 10px;">
+<tr><td>
+
+<a href="http://www.snertsoft.com/">
+<img alt="SnertSoft: We Serve Your Server" src="Img/logo-300x74.png" width="300" height="74" border="0" /></a>
+
+<div align="center">
+<h1 class="title">
+@PACKAGE_NAME@/@PACKAGE_VERSION@
+<br/><span class="large">&laquo;Find the myth in link!&raquo;</span>
+
+</h1>
+<br/>
+<a href="#">Description &amp; Usage</a> &deg;
+<a href="#Installation">Installation &amp; Notes</a> &deg;
+<a href="#License">License &amp; Support</a>
+</div>
+
+<a name="Warning"></a>
+<h3>WARNING</h3>
+<p class="warn">
+THIS IS MAIL FILTERING SOFTWARE AND WILL BLOCK MAIL THAT FAILS TO PASS A GIVEN SET OF TESTS.
+SNERTSOFT AND THE AUTHOR DO NOT ACCEPT ANY RESPONSIBLITY FOR MAIL REJECTED OR POSSIBLE
+LOSS OF BUSINESSS THROUGH THE USE OF THIS SOFTWARE. BY INSTALLING THIS SOFTWARE THE CLIENT
+UNDERSTANDS AND ACCEPTS THE RISKS INVOLVED.
+</p>
+
+<a name="Description"></a>
+<h3>Description</h3>
+
+<p>
+This <a href="http://www.sendmail.org/">Sendmail</a> mail filter extracts URIs, such http: and mailto: links,
+from within text, HTML, and/or MIME encoded messages,
+can verify if web page links do not work (<a href="#opt_test_links">+test-links</a>),
+and consult with one or more URI black lists, such as
+<a href="http://www.surbl.org/">SURBL</a>,
+<a href="http://www.spamhaus.org/">SpamHaus</a>, and/or
+<a href="http://www.uribl.com/">URIBL</a>,
+as to whether the URI domains have appeared in previous instances of spam
+(<a href="#opt_dns_bl">dns-bl=</a>, <a href="#opt_uri_bl">uri-bl=</a>).
+</p>
+<!-- Common Milter Options -->
+
+<a name="Usage"></a>
+<h3>Usage</h3>
+
+<blockquote style="text-align: left;">
+<nobr><code>@PACKAGE_NAME@</code> <span class="syntax">[options ...][arguments ...]</span></nobr>
+</blockquote>
+
+<p>
+Options can be expressed in four different ways. Boolean options
+are expressed as <span class="syntax">+option</span> or <span class="syntax">-option</span> to turn the option on or off
+respectively. Numeric, string, and list options are expressed as
+<span class="syntax">option=value</span> to set the option or <span class="syntax">option+=value</span> to append to a
+list. Note that the <span class="syntax">+option</span> and <span class="syntax">-option</span> syntax are equivalent to
+<span class="syntax">option=1</span> and <span class="syntax">option=0</span> respectively. String values containing white
+space must be quoted using single (') or double (") quotes. Option
+names are case insensitive.
+</p>
+<p>
+Some options, like <span class="syntax">+help</span> or <span class="syntax">-help</span>, are treated as immediate
+actions or commands. Unknown options are ignored and not reported.
+The first command-line argument is that which does not adhere to
+the above option syntax. The special command-line argument <span class="option">--</span> can
+be used to explicitly signal an end to the list of options.
+</p>
+<p>
+The default options, as shown below, can be altered by specifying
+them on the command-line or within an option <a href="#opt_file">file</a>, which simply
+contains command-line options one or more per line and/or on
+multiple lines. Comments are allowed and are denoted by a line
+starting with a hash (#) character. If the file option is defined
+and not empty, then it is parsed first, followed by the command
+line options.
+</p>
+
+<p>
+Note that there may be additional options that are listed in the option summary
+given by <span class="syntax">+help</span> or <span class="syntax">-help</span>
+that are not described here.
+</p>
+
+<a name="Options"></a>
+<h3>Options</h3>
+<dl>
+
+<!-- MODIFIED B/W listing options + milter-link-body: tag. -->
+
+<a name="opt_access_db"></a>
+<dt><span class="syntax">access-db=</span><span class="param">/etc/mail/access.db</span></dt>
+<dd>
+The type and location of the read-only access key-value map.
+It provides a centralised means to black and white list hosts,
+domains, mail addresses, etc. The following methods are supported:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td width="60%" class="syntax tline">text!/path/map.txt</td><td width="40%" class="tline">R/O text file, memory hash</td></tr>
+<tr><td width="60%" class="syntax">/path/map.db</td><td width="40%">Berkeley DB hash format</td></tr>
+<tr><td width="60%" class="syntax">db!/path/map.db</td><td width="40%">Berkeley DB hash format</td></tr>
+<tr><td width="60%" class="syntax">db!btree!/path/map.db</td><td width="40%">Berkeley DB btree format</td></tr>
+<tr><td width="60%" class="syntax">sql!/path/database</td><td width="40%">An SQLite3 database</td></tr>
+<tr><td width="60%" class="syntax">socketmap!host:port</td><td width="40%">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="syntax">socketmap!/path/local/socket</td><td width="40%">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="syntax">socketmap!123.45.67.89:port</td><td width="40%">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="syntax bline">socketmap![2001:0DB8::1234]:port</td><td width="40%" class="bline">Sendmail style socket-map</td></tr>
+</table>
+</blockquote>
+<p>
+If :port is omitted, the default is 7953.
+</p>
+<p>
+The access-db contains key-value pairs. Lookups are performed
+from most to least specific, stopping on the first entry found.
+Keys are case-insensitive.
+</p>
+<p>
+An IPv4 lookup is repeated several times reducing the IP address
+by one octet from right to left until a match is found.
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td>tag:192.0.2.9</td></tr>
+<tr><td>tag:192.0.2</td></tr>
+<tr><td>tag:192.0</td></tr>
+<tr><td>tag:192</td></tr>
+</table>
+</blockquote>
+<p>
+An IPv6 lookup is repeated several times reducing the IP address
+by one 16-bit word from right to left until a match is found.
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td>tag:2001:0DB8:0:0:0:0:1234:5678</td></tr>
+<tr><td>tag:2001:0DB8:0:0:0:0:1234</td></tr>
+<tr><td>tag:2001:0DB8:0:0:0:0</td></tr>
+<tr><td>tag:2001:0DB8:0:0:0</td></tr>
+<tr><td>tag:2001:0DB8:0:0</td></tr>
+<tr><td>tag:2001:0DB8:0:0</td></tr>
+<tr><td>tag:2001:0DB8:0</td></tr>
+<tr><td>tag:2001:0DB8</td></tr>
+<tr><td>tag:2001</td></tr>
+</table>
+</blockquote>
+<p>
+
+ A domain lookup is repeated several times reducing the domain by
+ one label from left to right until a match is found.
+
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td>tag:[ipv6:2001:0DB8::1234:5678]</td></tr>
+<tr><td>tag:[192.0.2.9]</td></tr>
+<tr><td>tag:sub.domain.tld</td></tr>
+<tr><td>tag:domain.tld</td></tr>
+<tr><td>tag:tld</td></tr>
+<tr><td>tag:</td></tr>
+</table>
+</blockquote>
+<p>
+
+ An email lookup is similar to a domain lookup, the exact address
+ is first tried, then the address's domain, and finally the local
+ part of the address.
+
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td>tag:account@sub.domain.tld</td></tr>
+<tr><td>tag:sub.domain.tld</td></tr>
+<tr><td>tag:domain.tld</td></tr>
+<tr><td>tag:tld</td></tr>
+<tr><td>tag:account@</td></tr>
+<tr><td>tag:</td></tr>
+</table>
+</blockquote>
+<p>
+
+ If a key is found and is a milter specific tag (ie. @PACKAGE_NAME@-Connect, @PACKAGE_NAME@-From, @PACKAGE_NAME@-Auth, @PACKAGE_NAME@-To), then the value is processed as a pattern list
+ and the result returned. The Sendmail variants cannot have a pattern list.
+ A pattern list is a whitespace separated
+ list of <i class="syntax">pattern-action</i> pairs followed by an optional default
+ <i class="syntax">action</i>. The supported patterns are:
+
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr><td class="syntax tline" width="50%">[network/cidr]action</td><td class="tline">Classless Inter-Domain Routing</td></tr>
+<tr><td class="syntax">!pattern!action</td><td>Simple fast text matching.</td></tr>
+<tr><td class="syntax bline">/regex/action</td><td class="bline">POSIX Extended Regular Expressions</td></tr>
+</table>
+</blockquote>
+<p>
+
+ The CIDR will only ever match for IP address related lookups.
+</p>
+<p>
+
+ A <span class="syntax">!pattern!</span> uses an astrisk (*) for a wildcard, scanning over
+ zero or more characters; a question-mark (?) matches any single
+ character; a backslash followed by any character treats it as a
+ literal (it loses any special meaning).
+
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr valign="top"><td class="syntax tline" width="50%">!abc!</td><td class="tline">exact match for 'abc'</td></tr>
+<tr valign="top"><td class="syntax">!abc*!</td><td>match 'abc' at start of string</td></tr>
+<tr valign="top"><td class="syntax">!*abc!</td><td>match 'abc' at the end of string</td></tr>
+<tr valign="top"><td class="syntax">!abc*def!</td><td>match 'abc' at the start and match 'def' at the end, maybe with stuff in between.</td></tr>
+<tr valign="top"><td class="syntax bline">!*abc*def*!</td><td class="bline">find 'abc', then find 'def'</td></tr>
+</table>
+</blockquote>
+<p>
+
+ For black-white lookups, the following actions are recognised:
+ OK or RELAY (white list), REJECT or ERROR (black list), DISCARD (accept &amp; discard),
+ SKIP or DUNNO (stop lookup, no result), and NEXT (opposite of
+ SKIP, resume lookup). Its possible to specify an empty action
+ after a pattern, which is treated like SKIP returning an undefined
+ result. Other options may specify other actions.
+</p>
+
+<p>
+Below is a list of supported tags. Other options may specify additional tags.
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr class="syntax"><td width="50%" class="bline">&nbsp;</td><td width="50%" class="bline">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Connect:<i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>Connect:<i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i></td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Connect:[<i>client-ip</i>]&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Connect:<i>client-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Connect:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>Connect:[<i>client-ip</i>] </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>Connect:<i>client-domain</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>[<i>client-ip</i>] </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>client-domain</i> </td><td><i>value</i></td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+All mail sent by a connecting <i>client-ip</i>, unresolved <i>client-ip</i> address or IP addresses that resolve to a
+<i>client-domain</i> are black or white-listed.
+
+These allows you to white-list your network for mail sent internally
+and off-site, or connections from outside networks.
+<span class="note">Note that Sendmail also has special semantics for Connect: and untagged forms.</span>
+	</td>
+</tr>
+
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender-address</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender@</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-From:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>From:<i>sender-address</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>From:<i>sender-domain</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>From:<i>sender@</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>sender-address</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>sender-domain</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>sender@</i> </td><td><i>value</i></td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+All mail from the <i>sender-address</i>, <i>sender-domain</i>, or that begins with <i>sender</i>
+is black or white-listed.
+In the case of a +detailed email address, the left hand side of the +detail is used for the <i>sender@</i> lookup.
+<span class="note">Note that Sendmail also has special semantics for From: and untagged forms.</span>
+	</td>
+</tr>
+
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Auth:<i>auth_authen</i></td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Auth:</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+All mail from the authenticated sender, as given by sendmail's {<i class="syntax">auth_authen</i>} macro,
+is black or white-listed.
+The string searched by the pattern list will be the <code><i class="syntax">sender-address</i></code>.
+The empty form of @PACKAGE_NAME@-Auth: allows for a milter specific default
+only when {<i class="syntax">auth_authen</i>} is defined.
+
+	</td>
+</tr>
+
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient-address</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient@</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-To:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr class="syntax"><td>Spam:<i>recipient-address</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
+<tr class="syntax"><td>Spam:<i>recipient-domain</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
+<tr class="syntax"><td>Spam:<i>recipient@</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
+<tr class="syntax"><td>To:<i>recipient-address</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>To:<i>recipient-domain</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td>To:<i>recipient@</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>recipient-address</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>recipient-domain</i> </td><td><i>value</i></td></tr>
+<tr class="syntax"><td><i>recipient@</i> </td><td><i>value</i></td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+All mail to the <i>recipient-address</i>, <i>recipient-domain</i>, or that begins with <i>recipient</i>
+is black or white-listed.
+In the case of a +detailed
+email address, the left hand side of the +detail is used for the <i>recipient@</i> lookup.
+<span class="note">Note that Sendmail also has special semantics for Spam:, To:, and untagged forms.</span>
+	</td>
+</tr>
+
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax"><td>@PACKAGE_NAME@-Body:<i>url-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+The <i>url-domain</i> found in the message body content is black or white listed.
+This can be used to white list URL domains that are know to be good and so avoid redundant
+lookups. Consider listing your own web site that might appear in your signatures, common and
+popular sites like hotmail.com or yahoo.com, etc. If black listed, the message will be rejected
+when found in the message body.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+</table>
+</blockquote>
+
+<p>
+The @PACKAGE_NAME@-Connect:, @PACKAGE_NAME@-From:, and @PACKAGE_NAME@-To: tags provide a milter specific means to
+override the Sendmail variants. For example, you normally white list your local network through any and all milters, but
+on the odd occasion you might want to actually scan mail from inside going out, without removing the Connect: tag that
+allows Sendmail to relay for your network or white listing for other milters. So for example if you have Sendmail tags
+like:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr class="syntax">
+	<td width="65%">To:mx.example.com</td><td width="35%">RELAY</td>
+</tr>
+</table>
+</blockquote>
+
+<p>
+You might have to add milter specific overrides in order to make sure the
+mail still gets filtered:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr class="syntax">
+	<td width="65%">To:mx.example.com</td><td width="35%">RELAY</td>
+</tr>
+<tr class="syntax">
+	<td>@PACKAGE_NAME@-To:mx.example.com</td><td>SKIP</td>
+</tr>
+</table>
+</blockquote>
+
+<p>
+Some additional examples:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr class="syntax" valign="top">
+	<td width="40%" class="tline">@PACKAGE_NAME@-Connect:80.94</td>
+	<td width="60%" class="tline" style="text-align: right;">[80.94.96.0/20]OK&nbsp;&nbsp;REJECT</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		Accept connections from the netblock 80.94.96.0/20 (80.94.96.0 through to 80.94.111.255) and
+		rejecting anything else in 80.94.0.0/16.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax" valign="top">
+	<td width="40%">@PACKAGE_NAME@-Connect:192.0.2</td>
+	<td width="60%" style="text-align: right;">/^192\.0\.2\.8[0-9]/OK&nbsp;&nbsp;REJECT</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		Accept connections from 192.0.2.80 through to 192.0.2.89, reject everything else in 192.0.2.0/24.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax" valign="top">
+	<td width="40%">@PACKAGE_NAME@-From:example.com</td>
+	<td width="60%" style="text-align: right;">/^john@.+/OK&nbsp;&nbsp;/^fred\+.*@.*/OK&nbsp;&nbsp;REJECT</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		Accept mail from &lt;john@example.com&gt; and &lt;fred@example.com&gt; when fred's address
+		contains a plus-detail in the address. Reject everything else from example.com.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax" valign="top">
+	<td width="40%">@PACKAGE_NAME@-To:example.net</td>
+	<td width="60%" style="text-align: right;">!*+*@*!REJECT&nbsp;&nbsp;!*.smith@*!REJECT&nbsp;&nbsp;/^[0-9].*/REJECT</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		Reject mail to example.net using a plus-detail address or to any user who's last name is "smith" or addresses
+		starting with a digit. No default given, so B/W processing would continue.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+</table>
+</blockquote>
+
+<p>
+Normally when the access.db lookup
+matches a milter tag, then the <i>value</i> pattern list is
+processed and there are no further access.db lookups.
+
+The NEXT action allows the access.db lookups to resume and is
+effectively the opposite of SKIP.
+
+Consider the following examples:
+</p>
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr class="syntax" valign="top">
+	<td width="40%" class="tline">@PACKAGE_NAME@-From:com<br/>From:com</td>
+	<td width="60%" class="tline" style="text-align: right;">/@com/REJECT&nbsp;&nbsp;NEXT<br/>OK</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		Reject mail from places like compaq.com or com.com if
+		the pattern matches, but resume the access.db lookups
+		otherwise.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+<tr class="syntax" valign="top">
+	<td width="40%">@PACKAGE_NAME@-From:aol.com&nbsp;&nbsp;<br/>From:fred@aol.com&nbsp;&nbsp;</td>
+	<td width="60%" style="text-align: right;">/^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/NEXT&nbsp;&nbsp;REJECT<br/>OK</td>
+</tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+<tr class="normal">
+	<td colspan="2">
+		AOL local parts are between 3 and 16 characters long and can contain dots and RFC 2822 atext characters except % and /.
+		The NEXT used above allows one simple regex to validate the format of the address
+		and proceed to lookup white listed and/or black listed addresses.
+	</td>
+</tr>
+<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+</table>
+</blockquote>
+</dd>
+
+<!-- end MODIFIED B/W listing options + milter-link-body: tag. -->
+
+<a name="opt_daemon"></a>
+<dt><span class="syntax">+daemon</span></dt>
+<dd>Start as a background daemon or foreground application.
+</dd>
+
+<a name="opt_dns_bl"></a>
+<dt><span class="syntax">dnl-bl=</span><span class="param"></span></dt>
+<dd>A comma or semi-colon separated list of IP based DNS BL suffixes to be used for
+IP address lookups.
+Composites lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix is the same as <code class="param">suffix/0x00FFFFFE</code>.
+IP black lists that are known to work for URI testing:
+<code>.sbl-xbl.spamhaus.org</code>. There may be others.
+Note some of these lists are composites, so you should check their
+documentation as to the other list choices available.
+</dd>
+
+<a name="opt_file"></a>
+<dt><span class="syntax">file=</span><span class="param">/etc/mail/@PACKAGE_NAME@.cf</span></dt>
+<dd>Read the option file before command line options. This option is set by default.
+To disable the use of an option file, simply say <span class="syntax">file=''</span>
+</dd>
+
+<a name="opt_help"></a>
+<dt><span class="syntax">-help</span> or <span class="syntax">+help</span></dt>
+<dd>Write the option summary to standard output and exit.
+The output is suitable for use as an option file.
+</dd>
+
+<a name="opt_http_timeout"></a>
+<dt><span class="syntax">http-timeout=</span><span class="param">60</span></dt>
+<dd>Socket timeout used when testing HTTP links, see <a href="#opt_test_links">+test-links</a>.
+</dd>
+
+<a name="opt_milter_socket"></a>
+<dt><span class="syntax">milter-socket=</span><span class="param">unix:@snert_socket_file@</span></dt>
+<dd>A socket specifier used to communicate between Sendmail and <code>@PACKAGE_NAME@</code>.
+Typically a unix named socket or a host:port. This value must match the value specified for
+the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
+
+<blockquote>
+<dl>
+<dt><code>{unix|local}:/path/to/file</code></dt><dd>A named pipe. (default)</dd>
+<dt><code>inet:port@{hostname|ip-address}</code></dt><dd>An IPV4 socket.</dd>
+<dt><code>inet6:port@{hostname|ip-address}</code></dt><dd>An IPV6 socket.</dd>
+</dl>
+</blockquote>
+</dd>
+
+<a name="opt_milter_timeout"></a>
+<dt><span class="syntax">milter-timeout=</span><span class="param">7210</span></dt>
+<dd>The sendmail/milter I/O timeout in seconds.</dd>
+
+<a name="opt_pid_file"></a>
+<dt><span class="syntax">pid-file=</span><span class="param">/var/run/milter/@PACKAGE_NAME@.pid</span></dt>
+<dd>The file path of where to save the process-id.
+</dd>
+
+<a name="opt_policy"></a>
+<dt><span class="syntax">policy=</span><span class="param">reject</span></dt>
+<dd>If a URL is blacklisted or invalid in some way (excluding <a href="#opt_test_links">+test-links</a>, see <a href="#opt_policy_links">policy-links</a>), then apply one of the following policies:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tr valign="top" align="justify">
+	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline" width="60%">Do nothing.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline">Reject the message.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline">Discard the message.</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+<a name="opt_policy_links"></a>
+<dt><span class="syntax">policy-links=</span><span class="param">tag</span></dt>
+<dd>If <a href="#opt_test_links">+test-links</a> finds a broken URL, then apply one of the following policies:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tr valign="top" align="justify">
+	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline" width="60%">Do nothing.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline">Reject the message.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline">Discard the message.</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+<a name="opt_quit"></a>
+<dt><span class="syntax">-quit</span> or <span class="syntax">+quit</span></dt>
+<dd>Quit an already running instance of the milter and exit.
+This is equivalent to: <nobr><code>kill -QUIT `cat /var/run/milter/@PACKAGE_NAME@.pid`</code></nobr>
+</dd>
+
+<a name="opt_restart"></a>
+<dt><span class="syntax">-restart</span> or <span class="syntax">+restart</span></dt>
+<dd>Terminate an already running instance of the milter before starting.
+</dd>
+
+<a name="opt_run_group"></a>
+<dt><span class="syntax">run-group=</span><span class="param">milter</span></dt>
+<dd>The process runtime group name to be used when started by root.</dd>
+
+<a name="opt_run_user"></a>
+<dt><span class="syntax">run-user=</span><span class="param">milter</span></dt>
+<dd>The process runtime user name to be used when started by root.</dd>
+
+<a name="opt_smtp_auth_ok"></a>
+<dt><span class="syntax">-smtp-auth-ok</span></dt>
+<dd>Allow SMTP authenticated senders to send unscanned mail. See also the
+<code>@PACKAGE_NAME@-auth:</code> tag (<a href="#opt_access_db">access-db=</a>)
+for finer granularity of control.
+</dd>
+
+<a name="opt_subject_tag"></a>
+<dt><span class="syntax">subject-tag=</span><span class="param">[SPAM]</span></dt>
+<dd>Subject tag prefix for invalid messages. To disable the subject tag specify:
+<nobr><span class="syntax">subject-tag=''</span></nobr> or see <a href="#opt_policy">policy=none</a>
+</dd>
+
+<a name="opt_test_links"></a>
+<dt><span class="syntax">-test-links</span></dt>
+<dd>
+Verify each HTTP link in the message body is valid (not broken) and find their corresponding
+origin server by following all redirections (not circular). If any link is invalid for any
+reason then apply the policy given by <a href="#opt_policy_links">policy-links</a>.
+</dd>
+
+<!--
+<a name="opt_test_sub_domains"></a>
+<dt><span class="syntax">-test-sub-domains</span></dt>
+<dd>
+When querying against name based black lists, like <code>.multi.surbl.org</code>
+or <code>.black.uribl.com</code>, first test the registered domain, then any
+sub-domains from right-to-left. Typically sub-domains are not listed.
+</dd>
+
+<a name="opt_text_vs_inline"></a>
+<dt><span class="syntax">-text-vs-inline</span></dt>
+<dd>
+In a multipart/alternative message, there is typically a basic text/plain representation of any
+rich text alternative, such as text/html. One common spam technique, a favourite of pump &amp; dump stock scams,
+is to embed inline content, such as images containing a textual message, into a text/html message and leave
+the text/plain part empty. This option will detect and apply the policy given by <a href="#opt_policy">policy=</a>.
+</dd>
+-->
+
+<a name="opt_verbose"></a>
+<dt><span class="syntax">verbose=</span><span class="param">info</span></dt>
+<dd>A comma separated list of how much detail to write to the mail log.
+Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="2" width="100%">
+<tr>
+	<td class="tline" width="4%"><span class="syntax">&sect;</span></td>
+	<td class="tline" width="21%">all</td>
+	<td class="tline" width="75%">All messages</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>0</td>
+	<td>Log nothing.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>info</td>
+	<td>General info messages. (default) </td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>trace</td>
+	<td>Trace progress through the milter.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>parse</td>
+	<td>Details from parsing addresses or special strings.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>debug</td>
+	<td>Lots of debug messages.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>dialog</td>
+	<td>I/O from Communications dialog</td>
+</tr>
+<tr>
+	<td><span class="syntax">&nbsp;</span></td>
+	<td>state</td>
+	<td>State transitions of message body scanner.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&nbsp;</span></td>
+	<td>dns</td>
+	<td>Trace &amp; debug of DNS operations</td>
+</tr>
+<tr>
+	<td><span class="syntax">&nbsp;</span></td>
+	<td>cache</td>
+	<td>Cache get/put/gc operations.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&sect;</span></td>
+	<td>database</td>
+	<td>Sendmail database lookups.</td>
+</tr>
+<tr>
+	<td><span class="syntax">&nbsp;</span></td>
+	<td>socket-fd</td>
+	<td>Socket open &amp; close calls</td>
+</tr>
+<tr>
+	<td><span class="syntax">&nbsp;</span></td>
+	<td>socket-all</td>
+	<td>All socket operations &amp; I/O</td>
+</tr>
+<tr>
+	<td class="bline"><span class="syntax">&sect;</span></td>
+	<td class="bline">libmilter</td>
+	<td class="bline">libmilter engine diagnostics</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+<a name="opt_work_dir"></a>
+<dt><span class="syntax">work-dir=</span><span class="param">/var/tmp</span></dt>
+<dd>The working directory of the process. Normally serves no purpose unless the
+kernel option that permits daemon process core dumps is set.
+</dd>
+
+<a name="opt_uri_bl"></a>
+<dt><span class="syntax">uri-bl=</span><span class="param">.multi.surbl.org</span></dt>
+<dd>A comma or semi-colon separated list of name based DNS BL suffixes to be used for
+domain or IP address lookups.
+Composites lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix is the same as <code class="param">suffix/0x00FFFFFE</code>.
+Known URI black lists that can be used are:
+<code>.multi.surbl.org</code>, <code>.multi.uribl.com</code>. There may be others.
+Note some of these lists are composites, so you should check their
+documentation as to the other list choices available.
+</dd>
+
+</dl>
+
+<!-- End Common Milter Options -->
+
+<a name="responses"></a>
+<h3>SMTP Responses</h3>
+<p>
+This is the list of possible SMTP responses.
+</p>
+
+<dl>
+<!-- BEGIN parsePath() errors -->
+<dt><tt>553 5.1.0 imbalanced angle brackets in path</tt></dt>
+<dd>The path given for a MAIL or RCPT command is missing a closing angle bracket</dd>
+
+<dt><tt>553 5.1.0 address does not conform to RFC 2821 syntax</tt></dt>
+<dd>The address is missing the angle brackets, &lt; and &gt;, as required by the RFC grammar.</dd>
+
+<dt><tt>553 5.1.0 local-part too long</tt></dt>
+<dd>The stuff before the @ is too long.</dd>
+
+<dt><tt>553 5.1.[37] invalid local part</tt></dt>
+<dd>The stuff before the @ sign contains unacceptable characters.</dd>
+
+<dt><tt>553 5.1.0 domain name too long</tt></dt>
+<dd>The stuff after the @ is too long.</dd>
+
+<dt><tt>553 5.1.7 address incomplete</tt></dt>
+<dd>Expecting a domain.tld after the @ sign and found none.</dd>
+
+<dt><tt>553 5.1.[37] invalid domain name</tt></dt>
+<dd>The domain after the @ sign contains unacceptable characters.</dd>
+<!-- END parsePath() errors -->
+
+<!-- BEGIN B/W response -->
+<dt><tt>550 5.7.1 connection .+ [.+] blocked</tt></dt>
+<dd>The connection is blacklisted in the sendmail access.db.</dd>
+
+<dt><tt>550 5.7.1 sender blocked</tt></dt>
+<dd>The sender is blacklisted in the sendmail access.db.</dd>
+
+<dt><tt>550 5.7.1 recipient blocked</tt></dt>
+<dd>The recipient is blacklisted in the sendmail access.db.</dd>
+<!-- END B/W response -->
+
+<dt><tt>550 5.7.1 broken URL ".+": .+</tt></dt>
+<dd>A URL found in the message fails to connect, return a valid document,
+or causes a redirection loop.
+</dd>
+
+<dt><tt>550 5.7.1 black listed URL host .+ by .+</tt></dt>
+<dd>A URL found in the message is black listed by the stated DNSBL service.</dd>
+
+<dt><tt>550 5.7.1 rejected URL host .+</tt></dt>
+<dd>A URL found in the message is locally black listed in the access.db using a @PACKAGE_NAME@-body: tag.</dd>
+</dl>
+
+<a name="Installation"></a>
+<div align="center">
+<br/>
+<a href="#">Description &amp; Usage</a> &deg;
+<a href="#Installation">Installation &amp; Notes</a> &deg;
+<a href="#License">License &amp; Support</a>
+</div>
+
+<h3>Installation</h3>
+<ol>
+<li><p>
+Download:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="2" width="100%">
+<tr>
+	<td class="tline bline"><a href="http://www.snertsoft.com/download/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz">@PACKAGE_NAME@/@PACKAGE_VERSION@</a></td>
+	<td class="tline bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
+	<td class="tline bline"><a href="CHANGES.TXT">Change Log</a></td>
+</tr>
+<tr>
+	<td class="bline"><a href="http://www.snertsoft.com/download/libsnert-current.tar.gz">LibSnert</a></td>
+	<td class="bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
+	<td class="bline"><a href="CHANGES-LIBSNERT.TXT">Change Log</a></td>
+</tr>
+<tr>
+	<td class="bline"><a href="http://www.sendmail.org/">Sendmail 8.14</a></td>
+	<td class="bline">&nbsp;</td>
+	<td class="bline"><a href="http://www.sendmail.org/">http://www.sendmail.org/</a></td>
+</tr>
+<tr>
+	<td class="bline"><a href="http://www.sleepycat.com/">Berkeley DB</a></td>
+	<td class="bline">&nbsp;</td>
+	<td class="bline"><a href="http://www.sleepycat.com/">http://www.sleepycat.com/</a></td>
+
+</tr>
+</table>
+</blockquote>
+</li>
+
+
+<li>
+<p>
+If you have never built a milter for Sendmail, then please make sure that you
+build and install <code>libmilter</code>, which is <i>not</i> built by default when you build Sendmail.
+Please read the <code>libmilter</code> documentation. Briefly, it should be something like this:
+</p>
+<blockquote><pre>
+cd (path to)/sendmail-8.14.0/libmilter
+sh Build -c install
+</pre></blockquote>
+</li>
+
+<li>
+<p>
+The build process for <code>libsnert</code> and <code>@PACKAGE_NAME@</code> is pretty straight forward
+once you have <code>libmilter</code> installed:
+</p>
+
+<blockquote><pre>
+cd (path to)/com/snert/src/lib
+./configure --without-sqlite3
+make build
+cd ../@PACKAGE_NAME@
+./configure
+make build
+make install
+</pre></blockquote>
+
+<p>
+SQLite support is not required in SnertSoft milters that do not use a cache.
+If you have compiled LibSnert for a mix of SnertSoft milters, some that require
+a cache, then you can build them all with the SQLite support. Will not hurt, just
+produce larger binaries in those that do not need it.
+</p>
+<p>
+Both configuration scripts have some options that allow you to override defaults. Those options
+are listed with:
+</p>
+<blockquote><pre>
+./configure --help
+</pre></blockquote>
+
+</li>
+
+<li>
+<p>
+An example <code>@datadir@/examples/@PACKAGE_NAME@/@PACKAGE_NAME@.mc</code> is supplied.
+This file should be reviewed and the necessary elements inserted into your Sendmail
+<code>.mc</code> file and <code>sendmail.cf</code> rebuilt.
+Please note the comments on the general milter flags.
+</p>
+<pre>
+<!--#include file="sample.mc" -->
+</pre>
+</li>
+
+<li>
+<p>Once installed and configured, start <code>@PACKAGE_NAME@</code> and then restart Sendmail.
+An example startup script is provided in <code>@datadir@/examples/@PACKAGE_NAME@/@PACKAGE_NAME@.sh</code>.
+The default options can be altered by specifying them on the command-line or
+within a <code>/etc/mail/@PACKAGE_NAME@.cf</code>. The <code>@PACKAGE_NAME@.cf</code> is
+parsed first followed by the command-line options.
+</p>
+</li>
+</ol>
+
+
+<a name="Notes"></a>
+<h3>Notes</h3>
+
+<ul>
+<li><p>
+Currently tested platforms:
+</p>
+<blockquote>
+<!-- <code>FreeBSD 4.4+ (x386)</code>; -->
+<code>Cobalt Qube 1 with Linux RH 5.1 (mips 2.0.34 kernel)</code>;
+<code>Linux RH 5.1 (Intel x386 2.2.25 kernel)</code>;
+<code>FreeBSD 4.8, 4.9 (Intel x386)</code>;
+<code>OpenBSD 3.6 (Intel x386)</code>
+</blockquote>
+</li>
+
+<li>
+<p>
+The minimum desired file ownership and permissions are as follows for a typical Linux system.
+For FreeBSD, NetBSD, and OpenBSD the binary and cache locations may differ, but have the same
+permissions.
+</p>
+
+<p>
+Process user ``milter'' is primary member of group ``milter'' and
+secondary member of group ``smmsp''. Note that the milter should
+be started as root, so that it can create a .pid file and .socket
+file in /var/run; after which it will switch process ownership to
+milter:milter before starting the accept socket thread.
+</p>
+
+<blockquote>
+<table cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+	<td width="40%">/etc/mail/</td><td width="20%">root:smmsp</td><td width="40%"><tt>0750 drwxr-x---</tt></td>
+</tr>
+<tr>
+	<td>/etc/mail/access.db</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
+</tr>
+<tr>
+	<td>/etc/mail/sendmail.cf</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
+</tr>
+<tr>
+	<td>/etc/mail/@PACKAGE_NAME@.cf</td><td>root:root</td><td><tt>0644 -rw-r--r--</tt></td>
+</tr>
+<tr>
+	<td>/var/run/milter/@PACKAGE_NAME@.pid</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt></td>
+</tr>
+<tr>
+	<td>/var/run/milter/@PACKAGE_NAME@.socket</td><td>milter:milter</td><td><tt>0644 srw-r--r--</tt></td>
+</tr>
+<tr>
+	<td>/var/db/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (*BSD)</td>
+</tr>
+<tr>
+	<td>/var/cache/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (linux)</td>
+</tr>
+<tr>
+	<td>/usr/local/libexec/@PACKAGE_NAME@</td><td>root:milter</td><td><tt>0550 -r-xr-x---</tt></td>
+</tr>
+</table>
+</blockquote>
+
+</li>
+
+<li><p>
+I would like to express my thanks to Derek Balling for his support at
+<a href="http://www.milter.org/">http://www.milter.org/</a>.
+</p></li>
+
+</ul>
+
+<a name="License"></a>
+<div align="center">
+<br/>
+<a href="#">Description &amp; Usage</a> &deg;
+<a href="#Installation">Installation &amp; Notes</a> &deg;
+<a href="#License">License &amp; Support</a>
+</div>
+
+<!-- License Agreement -->
+
+<h3>License Agreement 1.4</h3>
+<p>
+SNERTSOFT IS WILLING TO LICENSE THE SOFTWARE IDENTIFIED ABOVE TO YOU
+ONLY UPON THE CONDITION THAT YOU ACCEPT ALL OF THE TERMS CONTAINED
+IN THIS LICENSE AGREEMENT. PLEASE READ THE AGREEMENT CAREFULLY. BY
+DOWNLOADING OR INSTALLING THIS SOFTWARE, YOU ACCEPT THE TERMS OF THE
+AGREEMENT.
+</p>
+<ol>
+<li><h4>Definitions</h4>
+	<ol>
+	<li><p>
+	``Package'' means the identified above in source and/or binary
+	form, any other machine readable materials provided (including,
+	but not limited to documentation, sample files, data files),
+	any updates or error corrections, and its derivative works.
+	</p></li>
+	<li><p>
+    ``Private Individual'' means an individual using the Package for
+     personal, private, and non-commercial use only.
+	</p></li>
+	<li><p>
+    ``Organisation'' means a legal entity or an individual that does
+     not qualify as a Private Individual defined above.
+	</p></li>
+	<li><p>
+    ``You'' (or ``Your'') means a Private Individual or Organisation
+     exercising rights under, and complying with all of the terms of,
+     this License or a future version of this License issued under
+     Section 5.1.  For legal entities, ``You'' includes any entity
+     which controls, is controlled by, or is under common control with
+     You.  For purposes of this definition,``control'' means (a) the
+     power, direct or indirect, to cause the direction or management
+     of such entity, whether by contract or otherwise, or (b)
+     ownership of more than fifty percent (50%) of the outstanding
+     shares or beneficial ownership of such entity.
+	</p></li>
+	<li><p>
+	The Package is an original work written by Anthony C. Howe,
+	hereto referred to as the ``Author''.
+	</p></li>
+	</ol>
+</li>
+
+<li><h4>License To Use</h4>
+	<ol>
+	<li><p>
+	If You are a Private Individual and so
+     benefited from a reduced purchase price, then You may only
+     compile, install, and use this Package, with or without private
+     modifications, exclusively on a single machine You legally own or
+     rent from a third party, provided You retain this notice, the Author's copyright
+     notice, any and all license control methods (<a href="#License_Control">see below</a>), and any
+     links within the Package back to the most current online versions
+     of this License and Disclaimer.
+	</p></li>
+	<li><p>
+    Otherwise if You have paid the full purchase price, then You may
+     compile, install, and use this Package, with or without private
+     modifications, exclusively on machines You legally own or rent from a third party,
+     provided You retain this notice, the Author's copyright notice,
+     any and all license control methods (<a href="#License_Control">see below</a>), and any links
+     within the Package back to the most current online versions of
+     this License and Disclaimer.
+	</p></li>
+	<li><p>
+You may copy, share, distribute, modify, and create derivative
+works from the user manuals and any related documentation
+solely for Your internal business purposes, such as in-house
+documentation, training manuals, or reference material.
+	</p></li>
+	</ol>
+</li>
+
+
+<li><h4>Restrictions</h4>
+	<ol>
+	<li><p>
+Redistribution, including but not limited to books, CDROMS,
+download mirrors, floppy diskettes, hard disks, hardcopy print
+outs, online archives, solid state disks, streaming tapes, or
+other current or future forms of storage or communication media
+of the Package, with or without modifications, including any
+and all derivative works such as source patches, binaries,
+binary patches, or similar is expressly forbidden without prior
+written permission in hardcopy (letter or fax) signed and dated
+by the Author.
+	</p></li>
+	<li><p>
+
+It is expressly forbidden for You to use the Package, in whole
+or in part, in any other software, except those designated by
+the Author.
+	</p></li>
+	<li><p>
+
+It is expressly forbidden for You to use the Package to develop
+any software or other technology having the same primary
+function as the Package, including but not limited to using the
+Package in any development or test procedure that seeks to
+develop like software or other technology, or determine if such
+software or other technology performs in a similar manner as
+the Package.
+	</p></li>
+	<li><p>
+
+You may not sell, rent, lease, or transfer the Package to third
+parties without prior written permission in hardcopy (letter or fax)
+signed and dated by the Author.
+	</p></li>
+	</ol>
+</li>
+
+
+<li><h4>Termination</h4>
+	<ol>
+	<li><p>
+This Agreement is effective until terminated. You may
+terminate this Agreement at any time by destroying all copies
+of the Package. This Agreement will terminate immediately without
+notice from the Author if You fail to comply with any provision
+of this Agreement. Either party may terminate this Agreement
+immediately should any portion of the Package become, or in
+either party's opinion be likely to become, the subject of a
+claim of infringement of any intellectual property right. Upon
+Termination, You must destroy all copies of the Package.
+	</p></li>
+	</ol>
+</li>
+
+
+<li><h4>Versions Of The License</h4>
+	<ol>
+	<li><p>
+New Versions. The Author may publish revised and/or new
+versions of the License from time to time. Each version will
+be given a distinguishing version number.
+	</p></li>
+	<li><p>
+
+Effect of New Versions. Once a version of the Package has been
+published under a particular version of the License, You may
+always continue to use it under the terms of that License
+version. You may also choose to use such Package under the
+terms of any subsequent version of the License published by the
+Author. No one other than the Author has the right to modify
+the terms applicable to the Package created under this License.
+	</p></li>
+	</ol>
+</li>
+</ol>
+
+
+<h3>Disclaimer</h3>
+
+<p>
+THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESSED OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO WAY SHALL THE AUTHOR OR LICENSEE BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+</p>
+
+<a name="License_Control"></a>
+<h3>License Control</h3>
+<p>
+The Package may use one or more license control methods including, but
+not limited to, license key activation, periodic reporting of Package
+details and IP address of installation to SnertSoft, remote license
+verification by SnertSoft, or other future technical means. Any
+information reported to or gathered by SnertSoft shall remain strictly
+confidential and the private property of SnertSoft. Under no
+circumstances will SnertSoft resell or release this information to third
+parties, unless demanded by court order.
+</p>
+
+<a name="Support"></a>
+<h3>Support</h3>
+
+<p>
+Support is only provided for the Author's original Package. Priority
+support can be purchased. Free support is limited, based on the Author's
+availability, though enhancements requests and problem reports are welcome.
+A community mailing list is available; please refer to
+<a href="http://www.snertsoft.com/">SnertSoft</a> web site Support area for details.
+</p>
+
+<!-- end License Agreement -->
+
+<a name="Gifts"></a>
+<h3>Gifts</h3>
+
+<p>
+Gifts from the author's <a href="http://www.amazon.com/">Amazon US</a> or <a href="http://www.amazon.co.uk/">Amazon UK</a> wishlist (search by mail address &lt;achowe
+at snert dot com&gt;) are welcomed for the continued encouragement, moral support, and ego pumping needed to work in
+foreign non-english speaking lands.
+</p>
+
+<div align="center">
+<br/>
+<a href="#">Description &amp; Usage</a> &deg;
+<a href="#Installation">Installation &amp; Notes</a> &deg;
+<a href="#License">License &amp; Support</a>
+</div>
+
+<!-- copyright -->
+<p class="copyright" style="text-align: center;">
+<nobr>@package_copyright@</nobr>
+</p>
+<!--end copyright-->
+
+<p class="small" style="text-align: center;">
+<!--#include virtual="/cgi-bin/counter.cgi/sendmail/@PACKAGE_NAME@/counter.dat" -->
+tea leaves since 10 April 2006
+</p>
+
+</td></tr>
+</table>
+</div>
+</body>
+</html>

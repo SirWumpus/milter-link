@@ -1,0 +1,21 @@
+VERBOSE=yes
+LOGFILE=$HOME/procmail.log
+
+#
+# Delivery of plus+detail address to matching folder. For example
+# <user+a.folder.name@example.com> will save the message into the
+# folder ~user/a.folder.name if it exists. Note that sendmail folds
+# the local-part to lower case.
+#
+# Note: The $1 contains value only _IF_ procmail is invoked with
+# option -m or -a (with an argument). Be sure procmail is invoked
+# with that option either as from  LDA or ~/.forward.
+#
+# $1 is pseudo variable and it can't be used in condition line,
+# so we copy the value to ARG.
+
+PLUS=$1 
+
+:0 :
+*$ ? test -f "$PLUS"
+$PLUS

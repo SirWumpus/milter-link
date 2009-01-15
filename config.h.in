@@ -1,0 +1,32 @@
+/*
+ * @package_copyright@
+ * 
+ * @configure_input@
+ * 
+ * $OpenBSD$
+ */
+
+/***********************************************************************
+ *** 
+ ***********************************************************************/
+ 
+#undef MILTER_NAME
+#undef MILTER_MAJOR
+#undef MILTER_MINOR
+#undef MILTER_VERSION
+#undef MILTER_AUTHOR
+#undef MILTER_COPYRIGHT
+
+#undef NDEBUG
+#undef RUN_AS_USER
+#undef RUN_AS_GROUP
+#undef CACHE_FILE
+#undef CACHE_TYPE
+#undef PID_FILE
+#undef SOCKET_FILE
+#undef WORK_DIR
+#undef ENABLE_BLACKLIST
+
+/***********************************************************************
+ *** END
+ ***********************************************************************/

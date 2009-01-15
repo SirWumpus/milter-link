@@ -1,0 +1,77 @@
+dnl -------------------------------------------------------------------
+dnl @PACKAGE_TARNAME@.mc
+dnl -------------------------------------------------------------------
+dnl Example configuration to be added to sendmail.mc.
+dnl
+dnl @package_copyright@
+dnl
+dnl $OpenBSD$
+dnl
+
+define(`_FFR_MILTER', `1')dnl
+
+dnl -------------------------------------------------------------------
+dnl Enable this for debug output from Sendmail.
+
+dnl define(`confLOG_LEVEL', `14')dnl
+
+dnl -------------------------------------------------------------------
+dnl Enable this to see even more debug output.
+dnl Defaults to confLOG_LEVEL.
+dnl 
+dnl If Milter.LogLevel is greater-than:
+dnl
+dnl	0	Communication errors
+dnl	8	Header & RCPT modification messages
+dnl	9	Connect to info
+dnl	10	Milter error return codes, abort messages
+dnl	12	More return code info, connection/open errors
+dnl	14	grey & rcpts info
+dnl	17	Show headers & body sent to a milter.
+dnl	18	Quit
+dnl	21	Time a milter
+
+dnl define(`confMILTER_LOG_LEVEL', 14)dnl
+
+dnl -------------------------------------------------------------------
+dnl The S= by default specifies a unix domain socket to be used between
+dnl sendmail and the milter. It can also be an Internet domain socket.
+dnl The accepted forms are:
+dnl
+dnl 	{unix|local}:/path/to/file		A named pipe. (default)
+dnl	inet:port@{hostname|ip-address}		An IPv4 socket.
+dnl	inet6:port@{hostname|ip-address}	An IPv6 socket.
+dnl
+dnl Note that the F= says what to do with the message if the milter
+dnl is not running.
+dnl
+dnl	F=T	Temporary fail connection if filter unavailable
+dnl	F=R	Reject connection if filter unavailable
+dnl
+dnl If no F= specified and there is a problem with the milter, then
+dnl the default is to continue normal handling, skipping the milter.
+dnl
+dnl Note that the T= specifies timeouts for communication. The
+dnl following fields are defined:
+dnl
+dnl	C	Timeout for connecting to a filter. If set to zero (0),
+dnl		the system's connect() timeout will be used. Default: 5m
+dnl	S	Timeout for sending information from the MTA to a
+dnl		filter. Default: 10s
+dnl	R	Timeout for reading reply from the filter. Default: 10s
+dnl	E	Overall timeout between sending end-of-message to filter
+dnl		and waiting for the final acknowledgment. Default: 5m
+dnl
+dnl So the Sendmail default values are equivalent to:
+dnl
+dnl	T=C:5m;S=10s;R=10s;E:5m
+dnl
+
+INPUT_MAIL_FILTER(
+	`@PACKAGE_TARNAME@',
+	`S=unix:@snert_socket_file@, T=@snert_milter_t_equate@'
+)dnl
+
+dnl -------------------------------------------------------------------
+dnl End @PACKAGE_TARNAME@.mc
+dnl -------------------------------------------------------------------

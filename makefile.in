@@ -1,0 +1,143 @@
+#
+# @PACKAGE_STRING@
+#
+# @package_copyright@
+#
+# @configure_input@
+#
+# $OpenBSD$
+#
+
+.POSIX :
+
+MILTER 		= @PACKAGE_TARNAME@
+VERSION		= @PACKAGE_VERSION@
+
+########################################################################
+### Pick one that best suits your system.
+########################################################################
+
+RUN_USER	= @enable_run_user@
+RUN_GROUP	= @enable_run_group@
+SENDMAIL_DIR	= @with_sendmail@
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+PROGRAM		= @milter_executable@
+
+########################################################################
+### No further configuration beyond this point.
+########################################################################
+
+.SUFFIXES :
+A = .@LIBEXT@
+O = .@OBJEXT@
+E = @EXEEXT@
+
+#
+# Paths for supporting headers and libraries.
+#
+top_srcdir	= @top_srcdir@
+abs_top_srcdir 	= @top_srcdir@
+SNERT_TARDIR	= @rel_tardir@
+SNERT_INCDIR	= @rel_incdir@
+SNERT_LIBDIR	= @rel_libdir@
+
+TARFILE	= ${MILTER}-${VERSION}.tar.gz
+
+CC	= @CC@
+CC_E	= @CC_E@
+CC_O	= @CC_O@
+CFLAGS	= @CFLAGS@
+LDFLAGS	= @LDFLAGS@
+LIBS	= @LIBS@
+TAR_I	= @TAR_I@
+
+ARCHIVE	= @ARCHIVE@
+COMPILE	= @COMPILE@
+RANLIB	= @RANLIB@
+MD5SUM	= @MD5SUM@
+AUTOCONF= @AUTOCONF@
+
+MILTER_BUILD=`cat BUILD_ID.TXT`
+
+#######################################################################
+
+.MAIN : build
+
+build : ${MILTER}
+	@echo
+	@echo '***************************************************************'
+	@echo Build `cat BUILD_ID.TXT` DONE
+	@echo '***************************************************************'
+	@echo
+
+clean:
+	-rm -f *.o ${MILTER} *.exe
+	@echo
+	@echo '***************************************************************'
+	@echo Clean DONE
+	@echo '***************************************************************'
+	@echo
+
+distclean:
+	@echo '---------------------------------------------------------------'
+	-rm -f ${MILTER}.md5 *.o *.obj *.tds *.log *.exe *.core
+	-rm -f sample.mc startup.sh install.sh config.h makefile
+	-rm -rf autom4te.cache config.status config.log configure.lineno
+	@echo
+	@echo '***************************************************************'
+	@echo Distribution Clean `pwd` DONE
+	@echo '***************************************************************'
+	@echo
+
+strip: build
+	strip ${MILTER}
+
+next-id:
+	expr `cat BUILD_ID.TXT` + 1 >BUILD_ID.TXT
+
+${MILTER}: BUILD_ID.TXT $(SNERT) ${MILTER}.c
+	$(CC) -DMILTER_BUILD=$(MILTER_BUILD) -DMILTER_BUILD_STRING='"'$(MILTER_BUILD)'"' \
+	$(CFLAGS) $(LDFLAGS) -o ${MILTER} ${MILTER}.c $(LIBS)
+
+start:
+	./${MILTER}
+
+stop:
+	-./${MILTER} -quit
+
+restart:
+	-./${MILTER} -restart
+
+install: ${MILTER} install.sh
+	sh install.sh
+
+install.sh: install.sh.in config.status
+
+config.status: configure
+	./configure
+
+configure: aclocal.m4 configure.in
+	${AUTOCONF} -f
+
+manual.shtml: manual.shtml.in
+	./config.status manual.shtml
+
+list:
+	tar -ztf $(SNERT_TARDIR)/$(TARFILE)
+
+pack: next-id tar
+
+tar: MANIFEST.TXT configure manual.shtml
+	-rm -rf $(SNERT_TARDIR)/$(TARFILE) ${MILTER}.md5 autom4te.cache configure.lineno
+	echo '${VERSION}.'`cat BUILD_ID.TXT` >VERSION.TXT
+	echo '${MILTER}-${VERSION}.tar.gz' >FILE.TXT
+	tar -C ${SNERT_TARDIR} ${TAR_I} MANIFEST.TXT -zcf ${SNERT_TARDIR}/${TARFILE}
+	@echo
+	@echo '***************************************************************'
+	@cd ${SNERT_TARDIR}; ${MD5SUM} ${TARFILE} | tee com/snert/src/${MILTER}/${MILTER}.md5
+	@echo '***************************************************************'
+	@cd $(SNERT_TARDIR); wc -c $(TARFILE)
+	@echo '***************************************************************'
+	@echo
+

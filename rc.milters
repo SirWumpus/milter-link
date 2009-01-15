@@ -1,0 +1,14 @@
+# Look for installed SnertSoft milters.
+for milter in /usr/local/libexec/milter-*; do
+
+	# Get milter's flags defined by rc.conf.local
+	name=`basename ${milter} | tr '-' '_'`
+        milter_flags=`eval echo -n '"${'${name}_flags'-NO}"'`
+        
+	# Start the milter if not disabled.
+	if test "${milter_flags}" != X"NO" ; then
+		if ${milter} ${milter_flags} ; then
+			echo -n ' '`basename ${milter}`
+		fi
+	fi
+done
