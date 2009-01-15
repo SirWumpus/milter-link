@@ -124,14 +124,6 @@ typedef struct {
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
-typedef struct {
-	char *suffix;
-	unsigned long mask;
-} BL;
-
-static Vector dnsbl;
-static Vector uribl;
-
 static const char usage_test_sub_domains[] =
   "When querying against name based black lists, like .multi.surbl.org\n"
 "# or .black.uribl.com, first test the registered domain, then any \n"
@@ -226,7 +218,6 @@ static int
 testURI(workspace data, URI *uri)
 {
 	long i;
-	BL *bl;
 	char *host, *ip;
 	const char *error;
 	URI *origin = NULL;
@@ -293,42 +284,26 @@ testURI(workspace data, URI *uri)
 
 	are_different = origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0;
 
-	for (i = 0; i < VectorLength(uribl); i++) {
-		if ((bl = VectorGet(uribl, i)) == NULL)
-			continue;
-
-		smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking host=%s uribl=%s mask=%lu", TAG_ARGS, uri->host, bl->suffix, bl->mask);
-
-		if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, uri->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
-			data->policy = *optPolicyBL.string;
-			goto error1;
-		}
-
-		if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, origin->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
-			data->policy = *optPolicyBL.string;
-			goto error1;
-		}
+	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, uri->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		data->policy = *optPolicyBL.string;
+		goto error1;
+	}
+	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, origin->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		data->policy = *optPolicyBL.string;
+		goto error1;
 	}
 
-	for (i = 0; i < VectorLength(dnsbl); i++) {
-		if ((bl = VectorGet(dnsbl, i)) == NULL)
-			continue;
-
-		smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking host=%s dnsbl=%s mask=%lu", TAG_ARGS, uri->host, bl->suffix, bl->mask);
-
-		if ((list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, uri->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
-			data->policy = *optPolicyBL.string;
-			goto error1;
-		}
-
-		if (are_different && (list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, origin->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
-			data->policy = *optPolicyBL.string;
-			goto error1;
-		}
+	if ((list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, uri->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		data->policy = *optPolicyBL.string;
+		goto error1;
+	}
+	if (are_different && (list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, origin->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		data->policy = *optPolicyBL.string;
+		goto error1;
 	}
 ignore1:
 	(void) VectorAdd(data->tested, strdup(uri->host));
