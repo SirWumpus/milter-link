@@ -18,7 +18,7 @@ is no set schedule for releases.
 
 --0.9--
 
-   +	Requires LibSnert 1.70
+   +	Requires LibSnert 1.70.2
 
    !	Conversion to the improved URI and MIME APIs.
 
@@ -34,6 +34,12 @@ is no set schedule for releases.
    !	testUri: body: REJECT didn't work. data->policy had to be set to
 	'r' of the SMDB_ACCESSS_REJECT case, otherwise filterEndMessage
 	would not apply the rejection. Reported by Michael Grant.
+
+   !	Added addition query string check for '/' delimiter to match the
+   	behaviour of the uri CLI.
+
+   !	filterHeader: added uriMimeFreeUri to clear possible URI
+	gathered data from headers, which should not be occuring.
 
 --0.8--
 

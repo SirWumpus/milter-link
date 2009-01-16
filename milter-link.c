@@ -409,6 +409,10 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	if ((data->pdq = pdqOpen()) == NULL)
 		goto error1;
 
+	/* Currently we ignore URI found in headers. This might change
+	 * based on demand (see uri CLI and BarricadeMX which support
+	 * testing URI foundin headers).
+	 */
 	if ((data->mime = uriMimeCreate(0)) == NULL)
 		goto error2;
 
@@ -560,6 +564,7 @@ static sfsistat
 filterHeader(SMFICTX *ctx, char *name, char *value)
 {
 	char *s;
+	URI *uri;
 	workspace data;
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
@@ -587,7 +592,17 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 
 	for (s = value; *s != '\0'; s++)
 		(void) mimeNextCh(data->mime, *s);
+	(void) mimeNextCh(data->mime, '\r');
 	(void) mimeNextCh(data->mime, '\n');
+
+	/* Currently we ignore URI found in headers. This might change
+	 * based on demand (see uri CLI and BarricadeMX which support
+	 * testing URI foundin headers).
+	 */
+	if ((uri = uriMimeGetUri(data->mime)) != NULL) {
+		smfLog(SMF_LOG_DIALOG, TAG_FORMAT "clearing uri buffer=%s", TAG_ARGS, TextNull(uri->host));
+		uriMimeFreeUri(data->mime);
+	}
 
 	return SMFIS_CONTINUE;
 }
@@ -603,6 +618,7 @@ filterEndHeaders(SMFICTX *ctx)
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterEndHeaders(%lx)", TAG_ARGS, (long) ctx);
 
 	/* Force the header to body state transition. */
+	(void) mimeNextCh(data->mime, '\r');
 	(void) mimeNextCh(data->mime, '\n');
 
 	return SMFIS_CONTINUE;
@@ -639,16 +655,18 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 		if (mimeNextCh(data->mime, *chunk))
 			break;
 
-		uri = uriMimeGetUri(data->mime);
-		if (uri != NULL) {
-			if ((rc = testURI(data, uri)) == 0) {
-				if ((rc = testNS(data, uri->host)) == 0) {
-					if ((rc = testList(data, uri->query, "&")) == 0)
-						rc = testList(data, uri->path, "/");
-				}
+		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
+			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
+
+			if ((rc = testURI(data, uri)) == 0
+			&&  (rc = testNS(data, uri->host)) == 0
+			&&  (rc = testList(data, uri->query, "&")) == 0
+			&&  (rc = testList(data, uri->query, "/")) == 0) {
+				rc = testList(data, uri->path, "/");
 			}
+
 			uriMimeFreeUri(data->mime);
-			if (rc)
+			if (rc != 0)
 				break;
 		}
 	}
