@@ -8,8 +8,6 @@ dnl
 dnl $OpenBSD$
 dnl
 
-define(`_FFR_MILTER', `1')dnl
-
 dnl -------------------------------------------------------------------
 dnl Enable this for debug output from Sendmail.
 
@@ -18,7 +16,7 @@ dnl define(`confLOG_LEVEL', `14')dnl
 dnl -------------------------------------------------------------------
 dnl Enable this to see even more debug output.
 dnl Defaults to confLOG_LEVEL.
-dnl 
+dnl
 dnl If Milter.LogLevel is greater-than:
 dnl
 dnl	0	Communication errors

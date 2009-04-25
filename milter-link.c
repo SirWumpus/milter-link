@@ -192,8 +192,8 @@ static Option *optTable[] = {
 	&optAddHeaders,
 #endif
 	&optDnsBL,
-	&optDnsMaxTimeout,
-	&optDnsRoundRobin,
+	DNS_LIST_OPTIONS_TABLE,
+	PDQ_OPTIONS_TABLE,
 	&optHttpTimeout,
 	&optNsBL,
 	&optPolicyBL,
@@ -286,25 +286,31 @@ testURI(workspace data, URI *uri)
 
 	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *optPolicyBL.string;
 		goto error1;
 	}
 	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, origin->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		dnsListLog(data->work.qid, origin->host, list_name);
 		data->policy = *optPolicyBL.string;
 		goto error1;
 	}
 
-	if ((list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, uri->host)) != NULL) {
+	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *optPolicyBL.string;
 		goto error1;
 	}
-	if (are_different && (list_name = dnsListQuery(ip_bl_list, data->pdq, NULL, 0, origin->host)) != NULL) {
+	if (are_different && (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		dnsListLog(data->work.qid, origin->host, list_name);
 		data->policy = *optPolicyBL.string;
 		goto error1;
 	}
+
+	dnsListLog(data->work.qid, uri->host, NULL);
 ignore1:
 	(void) VectorAdd(data->tested, strdup(uri->host));
 ignore0:
@@ -640,6 +646,10 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 	else if (size < 20)
 		chunk[--size] = '\0';
 
+	/* Postfix doesn't set the queue-id until DATA is reached. */
+	if ((data->work.qid = smfi_getsymval(ctx, "i")) == NULL)
+		data->work.qid = smfNoQueue;
+
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterBody(%lx, '%.20s...', %lu)", TAG_ARGS, (long) ctx, chunk, size);
 
 	if (data->work.skipMessage) {
@@ -658,11 +668,13 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
 			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
 
-			if ((rc = testURI(data, uri)) == 0
-			&&  (rc = testNS(data, uri->host)) == 0
-			&&  (rc = testList(data, uri->query, "&")) == 0
-			&&  (rc = testList(data, uri->query, "/")) == 0) {
-				rc = testList(data, uri->path, "/");
+			if ((rc = testURI(data, uri)) == 0 && (rc = testNS(data, uri->host)) == 0) {
+				if (uri->query == NULL)
+					rc = testList(data, uri->path, "&");
+				else if ((rc = testList(data, uri->query, "&")) == 0)
+					rc = testList(data, uri->query, "/");
+				if (rc == 0)
+					rc = testList(data, uri->path, "/");
 			}
 
 			uriMimeFreeUri(data->mime);
@@ -686,6 +698,26 @@ filterEndMessage(SMFICTX *ctx)
 
 	if (data->work.skipMessage)
 		return SMFIS_CONTINUE;
+
+	/* Terminate MIME parsing. */
+	if (mimeNextCh(data->mime, EOF) == 0) {
+		int rc;
+		URI *uri;
+		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
+			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
+
+			if ((rc = testURI(data, uri)) == 0 && (rc = testNS(data, uri->host)) == 0) {
+				if (uri->query == NULL)
+					rc = testList(data, uri->path, "&");
+				else if ((rc = testList(data, uri->query, "&")) == 0)
+					rc = testList(data, uri->query, "/");
+				if (rc == 0)
+					rc = testList(data, uri->path, "/");
+			}
+
+			uriMimeFreeUri(data->mime);
+		}
+	}
 
 	if (data->reply[0] != '\0') {
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "%s", TAG_ARGS, data->reply);
@@ -809,6 +841,7 @@ static smfInfo milter = {
 void
 atExitCleanUp()
 {
+	dnsListLogClose();
 	dnsListFree(ip_bl_list);
 	dnsListFree(uri_bl_list);
 	dnsListFree(ns_bl_list);
@@ -934,6 +967,8 @@ main(int argc, char **argv)
 		syslog(LOG_ERR, "socketInit() error\n");
 		return 1;
 	}
+
+	DNS_LIST_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DNS) == SMF_LOG_DNS);
 
 	PDQ_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DNS) == SMF_LOG_DNS);
 	if (pdqInit()) {

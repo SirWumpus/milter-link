@@ -485,7 +485,7 @@ Consider the following examples:
 </dd>
 
 <a name="opt_dns_bl"></a>
-<dt><span class="syntax">dnl-bl=</span><span class="param"></span></dt>
+<dt><span class="syntax">dns-bl=</span><span class="param"></span></dt>
 <dd>A comma or semi-colon separated list of IP based DNS BL suffixes to be used for
 IP address lookups.
 Composites lists are supported using <code class="param">suffix/mask</code>.

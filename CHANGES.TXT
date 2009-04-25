@@ -16,9 +16,25 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+
+--0.11--
+
+   +	Requires LibSnert 1.71.1
+
+   !	manual.shtml.in: minor documentation correction.
+
+   !	Corrections for testing redirections in (pseudo) query string
+   	elements.
+
+--0.10--
+
+   +	Requires LibSnert 1.70.12
+
+   +	Added dns-list-log-file and dns-list-log-what options.
+
 --0.9--
 
-   +	Requires LibSnert 1.70.2
+   +	Requires LibSnert 1.70.5
 
    !	Conversion to the improved URI and MIME APIs.
 
@@ -40,6 +56,13 @@ is no set schedule for releases.
 
    !	filterHeader: added uriMimeFreeUri to clear possible URI
 	gathered data from headers, which should not be occuring.
+
+   !	filterEndMessage: make final call to mimeNextCh to signal EOF
+   	and process last potential URI in the MIME decode buffer.
+
+   !	testURI: the dns-bl option was broken following conversion to PDQ.
+
+   !	sample.mc.in: Removed from define(`_FFR_MILTER', `1')dnl
 
 --0.8--
 
