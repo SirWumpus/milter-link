@@ -53,6 +53,10 @@
 #define BLACK_LISTED_URL_FORMAT		"black listed URL host %s by %s"	/* 1st URL domain, 2nd list name */
 #endif
 
+#ifndef BLACK_LISTED_MAIL_FORMAT
+#define BLACK_LISTED_MAIL_FORMAT	"black listed <%s> by %s"		/* 1st mail address, 2nd list name */
+#endif
+
 /***********************************************************************
  *** No configuration below this point.
  ***********************************************************************/
@@ -85,8 +89,8 @@
 #include <com/snert/lib/util/getopt.h>
 #include <com/snert/lib/util/uri.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 70
-# error "LibSnert/1.70 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 71
+# error "LibSnert/1.71 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -119,8 +123,9 @@ typedef struct {
 
 	PDQ *pdq;				/* per connection */
 	Mime *mime;				/* per connection, reset per message */
-	Vector tested;				/* per connection */
 	Vector ns_tested;			/* per connection */
+	Vector uri_tested;			/* per connection */
+	Vector mail_tested;			/* per connection */
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
@@ -133,13 +138,13 @@ static const char usage_test_sub_domains[] =
 
 static const char usage_policy_bl[] =
   "Policy to apply if message contains a black listed URI found by dns-bl\n"
-"# or uri-bl. Specify one of none, tag, quarantine, reject, or discard\n"
+"# or uri-bl. Specify one of none, tag, quarantine, reject, or discard.\n"
 "#"
 ;
 
 static const char usage_policy_links[] =
   "Policy to apply if message contains a broken URL found by +test-links.\n"
-"# Specify one of none, tag, quarantine, reject, or discard\n"
+"# Specify one of none, tag, quarantine, reject, or discard.\n"
 "#"
 ;
 
@@ -182,6 +187,80 @@ static Option optTestSubDomains = { "test-sub-domains", "-",                    
 static Option optNsBL		= { "ns-bl",		"",			usage_ns_bl };
 static Option optUriBL		= { "uri-bl",		".multi.surbl.org",	usage_uri_bl };
 
+static const char usage_mail_bl[] =
+  "A list of name based MAIL BL suffixes to consult. Aggregate lists are\n"
+"# supported using suffix/mask. Without a /mask, suffix is the same as\n"
+"# suffix/0x00FFFFFE.\n"
+"#"
+;
+Option optMailBl		= { "mail-bl",		"",			usage_mail_bl };
+
+static const char usage_mail_bl_headers[] =
+  "A list of mail headers to parse for mail addresses and check against\n"
+"# one or more MAIL BL. Specify the empty list to disable.\n"
+"#"
+;
+Option optMailBlHeaders		= { "mail-bl-headers",	"From;Reply-To",	usage_mail_bl_headers };
+
+static const char usage_mail_bl_max[] =
+  "Maximum number of unique mail addresses to check. Specify zero for\n"
+"# unlimited.\n"
+"#"
+;
+Option optMailBlMax		= { "mail-bl-max",	"10",			usage_mail_bl_max };
+
+static const char usage_mail_bl_policy[] =
+  "Check if the message contains a black listed mail address found by\n"
+"# mail-bl.  Specify one of none, tag, quarantine, reject, or discard.\n"
+"#"
+;
+Option optMailBlPolicy		= { "mail-bl-policy",	"reject",		usage_mail_bl_policy };
+
+static const char usage_mail_bl_domains[] =
+  "A list of domain glob-like patterns for which to test against mail-bl,\n"
+"# typically free mail services. This reduces the load on public BLs.\n"
+"# Specify * to test all domains, empty list to disable.\n"
+"#"
+;
+Option optMailBlDomains		= {
+	"mail-bl-domains",
+
+	 "gmail.*"
+	";hotmail.*"
+	";live.*"
+	";yahoo.*"
+	";aol.*"
+	";aim.com"
+	";cantv.net"
+	";centrum.cz"
+	";centrum.sk"
+	";googlemail.com"
+	";inmail24.com"
+	";jmail.co.za"
+	";libero.it"
+	";luckymail.com"
+	";mail2world.com"
+	";msn.com"
+	";rocketmail.com"
+	";she.com"
+	";shuf.com"
+	";sify.com"
+	";terra.es"
+	";tiscali.it"
+	";tom.com"
+	";ubbi.com"
+	";virgilio.it"
+	";voila.fr"
+	";walla.com"
+	";wanadoo.fr"
+	";windowslive.com"
+	";y7mail.com"
+	";yeah.net"
+	";ymail.com"
+
+	, usage_mail_bl_domains
+};
+
 #ifdef DROPPED_ADD_HEADERS
 static Option optAddHeaders	= { "add-headers",	"-",			"Add extra informational headers when message passes." };
 #endif
@@ -195,6 +274,11 @@ static Option *optTable[] = {
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
 	&optHttpTimeout,
+	&optMailBl,
+	&optMailBlDomains,
+	&optMailBlHeaders,
+	&optMailBlMax,
+	&optMailBlPolicy,
 	&optNsBL,
 	&optPolicyBL,
 	&optPolicyLinks,
@@ -213,6 +297,57 @@ static Option *optTable[] = {
 DnsList *ip_bl_list;
 DnsList *ns_bl_list;
 DnsList *uri_bl_list;
+DnsList *mail_bl_list;
+Vector mail_bl_headers;
+Vector mail_bl_domains;
+
+sfsistat
+testMail(workspace data, const char *mail)
+{
+	sfsistat rc;
+	const char *list_name;
+
+	rc = SMFIS_CONTINUE;
+
+	if (data->policy == '\0' && VectorLength(data->mail_tested) < optMailBlMax.value
+	&& (list_name = dnsListQueryMail(mail_bl_list, data->pdq, mail_bl_domains, data->mail_tested, mail)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_MAIL_FORMAT, mail, list_name);
+		dnsListLog(data->work.qid, mail, list_name);
+		data->policy = *optMailBlPolicy.string;
+		rc = data->policy == 'r' ? SMFIS_REJECT : SMFIS_CONTINUE;
+	}
+
+	smfLog(SMF_LOG_DEBUG, TAG_FORMAT "testMail(%lx, \"%s\") rc=%d policy=%x reply='%s'", TAG_ARGS, (long) data, mail, rc, data->policy, data->reply);
+
+	return rc;
+}
+
+static sfsistat
+testMailString(workspace data, const char *value)
+{
+	int rc;
+	URI *uri;
+	Mime *mime;
+
+	if ((mime = uriMimeCreate(0)) == NULL)
+		return SMFIS_CONTINUE;
+
+	mimeHeadersFirst(mime, 0);
+
+	for (rc = SMFIS_CONTINUE; rc == SMFIS_CONTINUE && *value != '\0'; value++) {
+		if (mimeNextCh(mime, *value))
+			break;
+
+		if ((uri = uriMimeGetUri(mime)) != NULL) {
+			rc = testMail(data, uri->uriDecoded);
+			uriMimeFreeUri(mime);
+		}
+	}
+
+	uriMimeFree(mime);
+
+	return rc;
+}
 
 static int
 testURI(workspace data, URI *uri)
@@ -231,8 +366,8 @@ testURI(workspace data, URI *uri)
 		goto ignore0;
 
 	/* Session cache for previously PASSED hosts/domains. */
-	for (i = 0; i < VectorLength(data->tested); i++) {
-		if ((host = VectorGet(data->tested, i)) == NULL)
+	for (i = 0; i < VectorLength(data->uri_tested); i++) {
+		if ((host = VectorGet(data->uri_tested, i)) == NULL)
 			continue;
 
 		if (TextInsensitiveCompare(uri->host, host) == 0)
@@ -312,7 +447,7 @@ testURI(workspace data, URI *uri)
 
 	dnsListLog(data->work.qid, uri->host, NULL);
 ignore1:
-	(void) VectorAdd(data->tested, strdup(uri->host));
+	(void) VectorAdd(data->uri_tested, strdup(uri->host));
 ignore0:
 	rc = 0;
 error1:
@@ -327,9 +462,6 @@ static int
 testNS(workspace data, const char *host)
 {
 	const char *list_name;
-
-	if (ns_bl_list == NULL || host == NULL || *host == '\0')
-		return 0;
 
 	if ((list_name = dnsListQueryNs(ns_bl_list, data->pdq, data->ns_tested, host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, host, list_name);
@@ -422,17 +554,21 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	if ((data->mime = uriMimeCreate(0)) == NULL)
 		goto error2;
 
-	if ((data->tested = VectorCreate(10)) == NULL)
+	if ((data->uri_tested = VectorCreate(10)) == NULL)
 		goto error3;
-	VectorSetDestroyEntry(data->tested, free);
+	VectorSetDestroyEntry(data->uri_tested, free);
 
 	if ((data->ns_tested = VectorCreate(10)) == NULL)
 		goto error4;
 	VectorSetDestroyEntry(data->ns_tested, free);
 
+	if ((data->mail_tested = VectorCreate(10)) == NULL)
+		goto error5;
+	VectorSetDestroyEntry(data->mail_tested, free);
+
 	if (smfi_setpriv(ctx, (void *) data) == MI_FAILURE) {
 		syslog(LOG_ERR, TAG_FORMAT "failed to save workspace", TAG_ARGS);
-		goto error5;
+		goto error6;
 	}
 
 	access = smfAccessHost(&data->work, MILTER_NAME "-connect:", client_name, data->client_addr, SMDB_ACCESS_OK);
@@ -453,10 +589,12 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	TextCopy(data->client_name, sizeof (data->client_name), client_name);
 
 	return SMFIS_CONTINUE;
+error6:
+	VectorDestroy(data->mail_tested);
 error5:
 	VectorDestroy(data->ns_tested);
 error4:
-	VectorDestroy(data->tested);
+	VectorDestroy(data->uri_tested);
 error3:
 	uriMimeFree(data->mime);
 error2:
@@ -503,6 +641,7 @@ filterMail(SMFICTX *ctx, char **args)
 
 	data->hasPass = 0;
 	data->hasSubject = 0;
+	data->policy = '\0';
 	data->reply[0] = '\0';
 	data->subject[0] = '\0';
 
@@ -561,7 +700,11 @@ filterRcpt(SMFICTX *ctx, char **args)
 #endif
 	case SMDB_ACCESS_OK:
 		data->work.skipMessage = 1;
+		return SMFIS_CONTINUE;
 	}
+
+	if (testMail(data, data->work.mail->address.string) == SMFIS_REJECT)
+		return smfReply(&data->work, 550, NULL, "%s", data->reply);
 
 	return SMFIS_CONTINUE;
 }
@@ -571,7 +714,9 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 {
 	char *s;
 	URI *uri;
+	sfsistat rc;
 	workspace data;
+	const char **table;
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
 		return smfNullWorkspaceError("filterHeader");
@@ -608,6 +753,11 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	if ((uri = uriMimeGetUri(data->mime)) != NULL) {
 		smfLog(SMF_LOG_DIALOG, TAG_FORMAT "clearing uri buffer=%s", TAG_ARGS, TextNull(uri->host));
 		uriMimeFreeUri(data->mime);
+	}
+
+	for (table = (const char **) VectorBase(mail_bl_headers); *table != NULL; table++) {
+		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testMailString(data, value)) != SMFIS_CONTINUE)
+			break;
 	}
 
 	return SMFIS_CONTINUE;
@@ -677,6 +827,11 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 					rc = testList(data, uri->path, "/");
 			}
 
+			if (rc == 0 && uriGetSchemePort(uri) == 25) {
+				smfLog(SMF_LOG_DEBUG, TAG_FORMAT "checking <%s>...", TAG_ARGS, uri->uriDecoded);
+				rc = testMail(data, uri->uriDecoded);
+			}
+
 			uriMimeFreeUri(data->mime);
 			if (rc != 0)
 				break;
@@ -713,6 +868,11 @@ filterEndMessage(SMFICTX *ctx)
 					rc = testList(data, uri->query, "/");
 				if (rc == 0)
 					rc = testList(data, uri->path, "/");
+			}
+
+			if (rc == 0 && uriGetSchemePort(uri) == 25) {
+				smfLog(SMF_LOG_DEBUG, TAG_FORMAT "checking <%s>...", TAG_ARGS, uri->uriDecoded);
+				rc = testMail(data, uri->uriDecoded);
 			}
 
 			uriMimeFreeUri(data->mime);
@@ -778,8 +938,9 @@ filterClose(SMFICTX *ctx)
 
 	if ((data = (workspace) smfi_getpriv(ctx)) != NULL) {
 		cid = smfCloseEpilog(&data->work);
+		VectorDestroy(data->mail_tested);
+		VectorDestroy(data->uri_tested);
 		VectorDestroy(data->ns_tested);
-		VectorDestroy(data->tested);
 		uriMimeFree(data->mime);
 		pdqClose(data->pdq);
 		free(data);
@@ -844,7 +1005,12 @@ atExitCleanUp()
 	dnsListLogClose();
 	dnsListFree(ip_bl_list);
 	dnsListFree(uri_bl_list);
+	dnsListFree(mail_bl_list);
 	dnsListFree(ns_bl_list);
+
+	VectorDestroy(mail_bl_domains);
+	VectorDestroy(mail_bl_headers);
+
 	smdbClose(smdbAccess);
 	smfAtExitCleanUp();
 }
@@ -908,6 +1074,9 @@ main(int argc, char **argv)
 	ns_bl_list = dnsListCreate(optNsBL.string);
 	ip_bl_list = dnsListCreate(optDnsBL.string);
 	uri_bl_list = dnsListCreate(optUriBL.string);
+	mail_bl_list = dnsListCreate(optMailBl.string);
+	mail_bl_headers = TextSplit(optMailBlHeaders.string, ";, ", 0);
+	mail_bl_domains = TextSplit(optMailBlDomains.string, ";, ", 0);
 
 	switch (*optPolicyBL.string) {
 #ifdef HAVE_SMFI_QUARANTINE
@@ -922,6 +1091,18 @@ main(int argc, char **argv)
 	}
 
 	switch (*optPolicyLinks.string) {
+#ifdef HAVE_SMFI_QUARANTINE
+	case 'q':
+		milter.handlers.xxfi_flags |= SMFIF_QUARANTINE;
+		/*@fallthrough@*/
+#endif
+	case 't':
+		/* Going to change the Subject: header and add a report. */
+		milter.handlers.xxfi_flags |= SMFIF_ADDHDRS|SMFIF_CHGHDRS;
+		break;
+	}
+
+	switch (*optMailBlPolicy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
 	case 'q':
 		milter.handlers.xxfi_flags |= SMFIF_QUARANTINE;

@@ -17,6 +17,13 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--0.12--
+
+   +	Requires LibSnert 1.71.5
+
+   +	Added mail-bl, mail-bl-policy, mail-bl-headers, mail-bl-max.
+   	Commissioned on by Skull.
+
 --0.11--
 
    +	Requires LibSnert 1.71.1
