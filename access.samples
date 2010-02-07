@@ -1,4 +1,16 @@
-# Frequently seen URL domains that are know good or undesirable.
+#######################################################################
+# These localhost domains and/or IP address could trigger URI BL
+# test records.
+#######################################################################
+
+milter-link-body:127.0.0			OK
+milter-link-body:localhost			OK
+milter-link-body:localdomain			OK
+
+#######################################################################
+# Frequently seen URL domains that are known to be good or undesirable.
+#######################################################################
+
 #milter-link-body:126.com			REJECT
 #milter-link-body:163.com			REJECT
 #milter-link-body:2o7.net			REJECT
@@ -21,9 +33,11 @@ milter-link-body:arcamax.com			OK
 milter-link-body:astrology.com			OK
 milter-link-body:atdmt.com			OK
 milter-link-body:att.net			OK
+milter-link-body:avg.com			OK
 milter-link-body:aweber.com			OK
 milter-link-body:bbc.co.uk			OK
 milter-link-body:bcentral.com			OK
+#milter-link-body:beliefnet.com			REJECT
 milter-link-body:beliefnet.com			OK
 milter-link-body:bellsouth.net			OK
 milter-link-body:bfi0.com			OK
@@ -113,11 +127,16 @@ milter-link-body:mchsi.com			OK
 milter-link-body:mediaplex.com			OK
 milter-link-body:messagelabs.com		OK
 milter-link-body:microsoft.com			OK
+
+# Microsoft related domain used for smart tags?
+milter-link-body:5iantlavalamp.com		OK
+
 milter-link-body:military.com			OK
 milter-link-body:mindspring.com			OK
 milter-link-body:mit.edu			OK
 milter-link-body:monster.com			OK
 milter-link-body:msn.com			OK
+milter-link-body:myspace.com			OK
 milter-link-body:nate.com			OK
 milter-link-body:netatlantic.com		OK
 milter-link-body:netflix.com			OK
@@ -164,6 +183,7 @@ milter-link-body:speedera.net			OK
 milter-link-body:sportsline.com			OK
 milter-link-body:sun.com			OK
 milter-link-body:suntrust.com			OK
+milter-link-body:symantec.com			OK
 milter-link-body:sympatico.ca			OK
 milter-link-body:t-online.de			OK
 milter-link-body:tails.nl			OK
@@ -183,6 +203,7 @@ milter-link-body:uol.com.br			OK
 milter-link-body:ups.com			OK
 milter-link-body:verizon.net			OK
 milter-link-body:vistaprint.com			OK
+milter-link-body:volkswagen.com			OK
 milter-link-body:w3.org				OK
 milter-link-body:w3c.org			OK
 milter-link-body:wamu.com			OK
@@ -193,6 +214,8 @@ milter-link-body:web.de				OK
 milter-link-body:webshots.com			OK
 milter-link-body:webtv.net			OK
 milter-link-body:wsj.com			OK
+milter-link-body:xing.com			OK
+milter-link-body:xing.de			OK
 milter-link-body:xmr3.com			OK
 milter-link-body:yahoo.ca			OK
 milter-link-body:yahoo.co.kr			OK
@@ -205,3 +228,7 @@ milter-link-body:yopi.de			OK
 milter-link-body:yourfreedvds.com		OK
 milter-link-body:yoursite.com			OK
 milter-link-body:zdnet.com			OK
+
+#######################################################################
+# END
+#######################################################################

@@ -47,13 +47,12 @@ UNDERSTANDS AND ACCEPTS THE RISKS INVOLVED.
 <p>
 This <a href="http://www.sendmail.org/">Sendmail</a> mail filter extracts URIs, such http: and mailto: links,
 from within text, HTML, and/or MIME encoded messages,
-can verify if web page links do not work (<a href="#opt_test_links">+test-links</a>),
+can verify if web page links do not work,
 and consult with one or more URI black lists, such as
 <a href="http://www.surbl.org/">SURBL</a>,
-<a href="http://www.spamhaus.org/">SpamHaus</a>, and/or
-<a href="http://www.uribl.com/">URIBL</a>,
-as to whether the URI domains have appeared in previous instances of spam
-(<a href="#opt_dns_bl">dns-bl=</a>, <a href="#opt_uri_bl">uri-bl=</a>).
+<a href="http://www.uribl.com/">URIBL</a>
+, and/or <a href="http://www.spamhaus.org/">SpamHaus</a>
+as to whether the URI domains have appeared in previous instances of spam.
 </p>
 <!-- Common Milter Options -->
 
@@ -484,18 +483,6 @@ Consider the following examples:
 <dd>Start as a background daemon or foreground application.
 </dd>
 
-<a name="opt_dns_bl"></a>
-<dt><span class="syntax">dns-bl=</span><span class="param"></span></dt>
-<dd>A comma or semi-colon separated list of IP based DNS BL suffixes to be used for
-IP address lookups.
-Composites lists are supported using <code class="param">suffix/mask</code>.
-Without a <code class="param">/mask</code>, suffix is the same as <code class="param">suffix/0x00FFFFFE</code>.
-IP black lists that are known to work for URI testing:
-<code>.sbl-xbl.spamhaus.org</code>. There may be others.
-Note some of these lists are composites, so you should check their
-documentation as to the other list choices available.
-</dd>
-
 <a name="opt_file"></a>
 <dt><span class="syntax">file=</span><span class="param">/etc/mail/@PACKAGE_NAME@.cf</span></dt>
 <dd>Read the option file before command line options. This option is set by default.
@@ -506,11 +493,7 @@ To disable the use of an option file, simply say <span class="syntax">file=''</s
 <dt><span class="syntax">-help</span> or <span class="syntax">+help</span></dt>
 <dd>Write the option summary to standard output and exit.
 The output is suitable for use as an option file.
-</dd>
-
-<a name="opt_http_timeout"></a>
-<dt><span class="syntax">http-timeout=</span><span class="param">60</span></dt>
-<dd>Socket timeout used when testing HTTP links, see <a href="#opt_test_links">+test-links</a>.
+Note that this option may list additional undocumented options.
 </dd>
 
 <a name="opt_milter_socket"></a>
@@ -531,9 +514,12 @@ the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
 <a name="opt_mail_bl"></a>
 <dt><span class="syntax">mail-bl=</span><span class="param"></span></dt>
 <dd>
-A list of MD5 based MAIL BL suffixes to consult. Aggregate lists are
-supported using suffix/mask. Without a /mask, suffix is the same as
-suffix/0x00FFFFFE.
+A comma or semi-colon separated list of mail address black list suffixes to consult. The <code>MAIL FROM:</code>
+address and mail addresses found in select headers and the message are MD5
+hashed, which are then checked against these black lists.
+Aggregate lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix
+is the same as <code class="param">suffix/0x00FFFFFE</code>.
 </dd>
 
 <a name="opt_mail_bl_domains"></a>
@@ -619,69 +605,53 @@ mail-bl, then apply one of the following policies:
 <dt><span class="syntax">milter-timeout=</span><span class="param">7210</span></dt>
 <dd>The sendmail/milter I/O timeout in seconds.</dd>
 
+<a name="opt_links_policy"></a>
+<dt><span class="syntax">links-policy=</span><span class="param">tag</span></dt>
+<dd>If <a href="#opt_links_test">+links-test</a> finds a broken URL, then apply one of the following policies:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tr valign="top" align="justify">
+	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline" width="60%">Do nothing.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline">Reject the message.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline">Discard the message.</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+<a name="opt_links_test"></a>
+<dt><span class="syntax">-links-test</span></dt>
+<dd>
+Verify each HTTP link in the message body is valid (not broken) and find their corresponding
+origin server by following all redirections (not circular). If any link is invalid for any
+reason then apply the policy given by <a href="#opt_links_policy">links-policy</a>.
+</dd>
+
+<a name="opt_links_timeout"></a>
+<dt><span class="syntax">links-timeout=</span><span class="param">60</span></dt>
+<dd>Socket timeout used when testing HTTP links, see <a href="#opt_links_test">+links-test</a>.
+</dd>
+
+
 <a name="opt_pid_file"></a>
 <dt><span class="syntax">pid-file=</span><span class="param">/var/run/milter/@PACKAGE_NAME@.pid</span></dt>
 <dd>The file path of where to save the process-id.
-</dd>
-
-<a name="opt_policy"></a>
-<dt><span class="syntax">policy=</span><span class="param">reject</span></dt>
-<dd>If a URL is blacklisted or invalid in some way (excluding <a href="#opt_test_links">+test-links</a>, see <a href="#opt_policy_links">policy-links</a>), then apply one of the following policies:
-
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="3" width="100%">
-<tr valign="top" align="justify">
-	<td class="tline bline syntax" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
-</tr>
-</table>
-</blockquote>
-</dd>
-
-<a name="opt_policy_links"></a>
-<dt><span class="syntax">policy-links=</span><span class="param">tag</span></dt>
-<dd>If <a href="#opt_test_links">+test-links</a> finds a broken URL, then apply one of the following policies:
-
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="3" width="100%">
-<tr valign="top" align="justify">
-	<td class="tline bline syntax" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
-</tr>
-<tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
-</tr>
-</table>
-</blockquote>
 </dd>
 
 <a name="opt_quit"></a>
@@ -713,26 +683,13 @@ for finer granularity of control.
 <a name="opt_subject_tag"></a>
 <dt><span class="syntax">subject-tag=</span><span class="param">[SPAM]</span></dt>
 <dd>Subject tag prefix for invalid messages. To disable the subject tag specify:
-<nobr><span class="syntax">subject-tag=''</span></nobr> or see <a href="#opt_policy">policy=none</a>
-</dd>
-
-<a name="opt_test_links"></a>
-<dt><span class="syntax">-test-links</span></dt>
-<dd>
-Verify each HTTP link in the message body is valid (not broken) and find their corresponding
-origin server by following all redirections (not circular). If any link is invalid for any
-reason then apply the policy given by <a href="#opt_policy_links">policy-links</a>.
+<nobr><span class="syntax">subject-tag=''</span></nobr>.
+See also
+<a href="#opt_uri_bl_policy">uri-bl-policy</a> and
+<a href="#opt_links_policy">links-policy</a>.
 </dd>
 
 <!--
-<a name="opt_test_sub_domains"></a>
-<dt><span class="syntax">-test-sub-domains</span></dt>
-<dd>
-When querying against name based black lists, like <code>.multi.surbl.org</code>
-or <code>.black.uribl.com</code>, first test the registered domain, then any
-sub-domains from right-to-left. Typically sub-domains are not listed.
-</dd>
-
 <a name="opt_text_vs_inline"></a>
 <dt><span class="syntax">-text-vs-inline</span></dt>
 <dd>
@@ -743,6 +700,91 @@ the text/plain part empty. This option will detect and apply the policy given by
 </dd>
 -->
 
+<a name="opt_uri_a_bl"></a>
+<dt><span class="syntax">uri-a-bl=</span><span class="param"></span></dt>
+<dd>
+A comma or semi-colon separated list of IP black list suffixes to consult, like <code>.sbl-xbl.spamhaus.org</code>
+The host or domain name found in a URI is used to find its DNS A record
+and IP address, which is then checked against these IP DNS black lists.
+Aggregate lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix
+is the same as <code class="param">suffix/0x00FFFFFE</code>.
+</dd>
+
+<a name="opt_uri_bl"></a>
+<dt><span class="syntax">uri-bl=</span><span class="param">.multi.surbl.org</span></dt>
+<dd>
+A comma or semi-colon separated list of domain name black list suffixes to consult, like <code>.multi.surbl.org</code>.
+The domain name found in a URI is checked against these DNS black lists.
+Aggregate lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix
+is the same as <code class="param">suffix/0x00FFFFFE</code>.
+</dd>
+
+<a name="opt_uri_bl_helo"></a>
+<dt><span class="syntax">-uri-bl-helo</span></dt>
+<dd>
+Test the HELO/EHLO argument using the
+<a href="#opt_uri_bl">uri-bl</a>,
+<a href="#opt_uri_a_bl">uri-a-bl</a>, and
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>
+options. Reject the command if black listed.
+</dd>
+
+<a name="opt_uri_bl_policy"></a>
+<dt><span class="syntax">uri-bl-policy=</span><span class="param">reject</span></dt>
+<dd>
+Policy to apply if message contains a black listed URI found by
+<a href="#opt_uri_bl">uri-bl</a>,
+<a href="#opt_uri_a_bl">uri-a-bl</a>, and
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>, then apply one of the following policies:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tr valign="top" align="justify">
+	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline" width="60%">Do nothing.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline">Reject the message.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline">Discard the message.</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+<a name="opt_uri_bl_sub_domains"></a>
+<dt><span class="syntax">-uri-bl-sub-domains</span></dt>
+<dd>
+When querying against name based black lists, like <code>.multi.surbl.org</code>
+or <code>.black.uribl.com</code>, first test the registered domain, then any
+sub-domains from right-to-left. Typically sub-domains are not listed.
+</dd>
+
+<a name="opt_uri_ns_bl"></a>
+<dt><span class="syntax">uri-ns-bl=</span><span class="param"></span></dt>
+<dd>
+A comma or semi-colon separated list of host name and/or domain name black list suffixes to consult. The
+domain name found in a URI is used to find its DNS NS records; the NS host
+names are checked against these host name and/or domain name DNS black
+lists.
+Aggregate lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix
+is the same as <code class="param">suffix/0x00FFFFFE</code>.
+</dd>
+
 <a name="opt_verbose"></a>
 <dt><span class="syntax">verbose=</span><span class="param">info</span></dt>
 <dd>A comma separated list of how much detail to write to the mail log.
@@ -752,18 +794,8 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 <table border="0" cellspacing="0" cellpadding="2" width="100%">
 <tr>
 	<td class="tline" width="4%"><span class="syntax">&sect;</span></td>
-	<td class="tline" width="21%">all</td>
-	<td class="tline" width="75%">All messages</td>
-</tr>
-<tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>0</td>
-	<td>Log nothing.</td>
-</tr>
-<tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>info</td>
-	<td>General info messages. (default) </td>
+	<td class="tline" width="21%">info</td>
+	<td class="tline" width="75%">General info messages. (default) </td>
 </tr>
 <tr>
 	<td><span class="syntax">&sect;</span></td>
@@ -783,7 +815,7 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 <tr>
 	<td><span class="syntax">&sect;</span></td>
 	<td>dialog</td>
-	<td>I/O from Communications dialog</td>
+	<td>I/O from communications dialog</td>
 </tr>
 <tr>
 	<td><span class="syntax">&nbsp;</span></td>
@@ -791,7 +823,7 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 	<td>State transitions of message body scanner.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&nbsp;</span></td>
+	<td><span class="syntax">&sect;</span></td>
 	<td>dns</td>
 	<td>Trace &amp; debug of DNS operations</td>
 </tr>
@@ -806,12 +838,12 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 	<td>Sendmail database lookups.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&nbsp;</span></td>
+	<td><span class="syntax">&sect;</span></td>
 	<td>socket-fd</td>
 	<td>Socket open &amp; close calls</td>
 </tr>
 <tr>
-	<td><span class="syntax">&nbsp;</span></td>
+	<td><span class="syntax">&sect;</span></td>
 	<td>socket-all</td>
 	<td>All socket operations &amp; I/O</td>
 </tr>
@@ -828,18 +860,6 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 <dt><span class="syntax">work-dir=</span><span class="param">/var/tmp</span></dt>
 <dd>The working directory of the process. Normally serves no purpose unless the
 kernel option that permits daemon process core dumps is set.
-</dd>
-
-<a name="opt_uri_bl"></a>
-<dt><span class="syntax">uri-bl=</span><span class="param">.multi.surbl.org</span></dt>
-<dd>A comma or semi-colon separated list of name based DNS BL suffixes to be used for
-domain or IP address lookups.
-Composites lists are supported using <code class="param">suffix/mask</code>.
-Without a <code class="param">/mask</code>, suffix is the same as <code class="param">suffix/0x00FFFFFE</code>.
-Known URI black lists that can be used are:
-<code>.multi.surbl.org</code>, <code>.multi.uribl.com</code>. There may be others.
-Note some of these lists are composites, so you should check their
-documentation as to the other list choices available.
 </dd>
 
 </dl>
@@ -982,7 +1002,6 @@ are listed with:
 <blockquote><pre>
 ./configure --help
 </pre></blockquote>
-
 </li>
 
 <li>
@@ -1073,11 +1092,6 @@ milter:milter before starting the accept socket thread.
 
 </li>
 
-<li><p>
-I would like to express my thanks to Derek Balling for his support at
-<a href="http://www.milter.org/">http://www.milter.org/</a>.
-</p></li>
-
 </ul>
 
 <a name="License"></a>
@@ -1090,70 +1104,86 @@ I would like to express my thanks to Derek Balling for his support at
 
 <!-- License Agreement -->
 
-<h3>License Agreement 1.4</h3>
+<h3>License Agreement 1.7</h3>
 <p>
-SNERTSOFT IS WILLING TO LICENSE THE SOFTWARE IDENTIFIED ABOVE TO YOU
+SNERTSOFT &amp; CO. ARE WILLING TO LICENSE THE SOFTWARE IDENTIFIED ABOVE TO YOU
 ONLY UPON THE CONDITION THAT YOU ACCEPT ALL OF THE TERMS CONTAINED
 IN THIS LICENSE AGREEMENT. PLEASE READ THE AGREEMENT CAREFULLY. BY
 DOWNLOADING OR INSTALLING THIS SOFTWARE, YOU ACCEPT THE TERMS OF THE
 AGREEMENT.
 </p>
-<ol>
+
+<ol style="clear: both; padding: 10px 0px 0px 1.2em;">
 <li><h4>Definitions</h4>
 	<ol>
 	<li><p>
-	``Package'' means the identified above in source and/or binary
-	form, any other machine readable materials provided (including,
-	but not limited to documentation, sample files, data files),
-	any updates or error corrections, and its derivative works.
+``Package'' means the identified above in source and/or binary
+form, any other machine readable materials provided (including,
+but not limited to documentation, sample files, data files),
+any updates or error corrections, and its derivative works.
 	</p></li>
 	<li><p>
-    ``Private Individual'' means an individual using the Package for
-     personal, private, and non-commercial use only.
+``Organisation'' means a legal entity or an individual.
 	</p></li>
 	<li><p>
-    ``Organisation'' means a legal entity or an individual that does
-     not qualify as a Private Individual defined above.
+``You'' (or ``Your'') means an Organisation
+ exercising rights under, and complying with all of the terms of,
+ this License or a future version of this License issued under
+ Section 6.1.  For legal entities, ``You'' includes any entity
+ which controls, is controlled by, or is under common control with
+ You.  For purposes of this definition,``control'' means (a) the
+ power, direct or indirect, to cause the direction or management
+ of such entity, whether by contract or otherwise, or (b)
+ ownership of more than fifty percent (50%) of the outstanding
+ shares or beneficial ownership of such entity.
 	</p></li>
 	<li><p>
-    ``You'' (or ``Your'') means a Private Individual or Organisation
-     exercising rights under, and complying with all of the terms of,
-     this License or a future version of this License issued under
-     Section 5.1.  For legal entities, ``You'' includes any entity
-     which controls, is controlled by, or is under common control with
-     You.  For purposes of this definition,``control'' means (a) the
-     power, direct or indirect, to cause the direction or management
-     of such entity, whether by contract or otherwise, or (b)
-     ownership of more than fifty percent (50%) of the outstanding
-     shares or beneficial ownership of such entity.
+``SnertSoft'' means Anthony C. Howe situated in Cannes, France
+(SIRET #489 259 937 00014).
 	</p></li>
 	<li><p>
-	The Package is an original work written by Anthony C. Howe,
-	hereto referred to as the ``Author''.
+``SnertSoft &amp; Co.'' means SnertSoft and all authorised &amp;
+licensed partners, such as value-added resellers or appliance manufacturers.
 	</p></li>
 	</ol>
 </li>
 
+<li><h4>Statement of Original Work</h4>
+	<ol>
+	<li><p>
+The Package is an original work written by SnertSoft,
+with exception of following third party code:
+	</p>
+		<ol>
+		<li><p>
+MD5 routines written by L. Peter Deutsch, based on RFC 1321;
+		</p></li>
+		<li><p>
+SQLite3 package is written by D. Richard Hipp of Hwaci
+and is in the public domain.
+		</p></li>
+		<li><p>
+
+strnatcmp.c is written by Martin Pool of sourcefrog.net and
+     	has a BSD style license.
+		</p></li>
+
+
+		</ol>
+	</li>
+	</ol>
+</li>
+
+
 <li><h4>License To Use</h4>
 	<ol>
 	<li><p>
-	If You are a Private Individual and so
-     benefited from a reduced purchase price, then You may only
-     compile, install, and use this Package, with or without private
-     modifications, exclusively on a single machine You legally own or
-     rent from a third party, provided You retain this notice, the Author's copyright
-     notice, any and all license control methods (<a href="#License_Control">see below</a>), and any
-     links within the Package back to the most current online versions
-     of this License and Disclaimer.
-	</p></li>
-	<li><p>
-    Otherwise if You have paid the full purchase price, then You may
-     compile, install, and use this Package, with or without private
-     modifications, exclusively on machines You legally own or rent from a third party,
-     provided You retain this notice, the Author's copyright notice,
-     any and all license control methods (<a href="#License_Control">see below</a>), and any links
-     within the Package back to the most current online versions of
-     this License and Disclaimer.
+You may install and use this Package, without modifications,
+exclusively on machines for which You have purchased a license,
+provided You retain this notice, SnertSoft's copyright notice,
+any and all license control methods (<a href="#License_Control">see below</a>),
+and any links within the Package back to the most current online versions of
+this License and Disclaimer.
 	</p></li>
 	<li><p>
 You may copy, share, distribute, modify, and create derivative
@@ -1175,17 +1205,16 @@ other current or future forms of storage or communication media
 of the Package, with or without modifications, including any
 and all derivative works such as source patches, binaries,
 binary patches, or similar is expressly forbidden without prior
-written permission in hardcopy (letter or fax) signed and dated
-by the Author.
+written permission in hardcopy (ie. letter or fax) signed and dated
+by SnertSoft.
 	</p></li>
 	<li><p>
-
 It is expressly forbidden for You to use the Package, in whole
-or in part, in any other software, except those designated by
-the Author.
+or in part, in any other software or appliance without prior
+written permission in hardcopy (ie. letter or fax) signed and dated
+by SnertSoft.
 	</p></li>
 	<li><p>
-
 It is expressly forbidden for You to use the Package to develop
 any software or other technology having the same primary
 function as the Package, including but not limited to using the
@@ -1195,10 +1224,9 @@ software or other technology performs in a similar manner as
 the Package.
 	</p></li>
 	<li><p>
-
 You may not sell, rent, lease, or transfer the Package to third
-parties without prior written permission in hardcopy (letter or fax)
-signed and dated by the Author.
+parties without prior written permission in hardcopy (ie. letter or fax)
+signed and dated by SnertSoft.
 	</p></li>
 	</ol>
 </li>
@@ -1209,9 +1237,15 @@ signed and dated by the Author.
 	<li><p>
 This Agreement is effective until terminated. You may
 terminate this Agreement at any time by destroying all copies
-of the Package. This Agreement will terminate immediately without
-notice from the Author if You fail to comply with any provision
-of this Agreement. Either party may terminate this Agreement
+of the Package.
+	</p></li>
+	<li><p>
+This Agreement will terminate immediately without
+notice from SnertSoft if You fail to comply with any provision
+of this Agreement.
+	</p></li>
+	<li><p>
+Either party may terminate this Agreement
 immediately should any portion of the Package become, or in
 either party's opinion be likely to become, the subject of a
 claim of infringement of any intellectual property right. Upon
@@ -1224,18 +1258,19 @@ Termination, You must destroy all copies of the Package.
 <li><h4>Versions Of The License</h4>
 	<ol>
 	<li><p>
-New Versions. The Author may publish revised and/or new
+New Versions. SnertSoft may publish revised and/or new
 versions of the License from time to time. Each version will
 be given a distinguishing version number.
 	</p></li>
 	<li><p>
-
 Effect of New Versions. Once a version of the Package has been
 published under a particular version of the License, You may
 always continue to use it under the terms of that License
 version. You may also choose to use such Package under the
-terms of any subsequent version of the License published by the
-Author. No one other than the Author has the right to modify
+terms of the most current version of the License published by SnertSoft.
+	</p></li>
+	<li><p>
+No one other than SnertSoft has the right to modify
 the terms applicable to the Package created under this License.
 	</p></li>
 	</ol>
@@ -1249,7 +1284,7 @@ the terms applicable to the Package created under this License.
 THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESSED OR IMPLIED
 WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO WAY SHALL THE AUTHOR OR LICENSEE BE LIABLE FOR ANY DIRECT, INDIRECT,
+IN NO WAY SHALL SNERTSOFT OR LICENSEE BE LIABLE FOR ANY DIRECT, INDIRECT,
 INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
 BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
@@ -1264,11 +1299,11 @@ POSSIBILITY OF SUCH DAMAGE.
 <p>
 The Package may use one or more license control methods including, but
 not limited to, license key activation, periodic reporting of Package
-details and IP address of installation to SnertSoft, remote license
-verification by SnertSoft, or other future technical means. Any
-information reported to or gathered by SnertSoft shall remain strictly
-confidential and the private property of SnertSoft. Under no
-circumstances will SnertSoft resell or release this information to third
+details and IP address of installation to SnertSoft &amp; Co., or remote license
+verification by SnertSoft &amp; Co.. Any information reported to
+or gathered by SnertSoft &amp; Co. shall remain strictly
+confidential and the private property of SnertSoft &amp; Co.. Under no
+circumstances will SnertSoft &amp; Co. resell or release this information to third
 parties, unless demanded by court order.
 </p>
 
@@ -1276,9 +1311,18 @@ parties, unless demanded by court order.
 <h3>Support</h3>
 
 <p>
-Support is only provided for the Author's original Package. Priority
-support can be purchased. Free support is limited, based on the Author's
-availability, though enhancements requests and problem reports are welcome.
+Support is provided for one year from date of purchase and only for SnertSoft's original
+Package that was purchased directly from SnertSoft. Additional support beyond the first
+year can be obtained from SnertSoft on time &amp; materials basis or from one of SnertSoft's
+authorised partners.
+</p>
+<p>
+Support for the Package obtained from authorised partners, such as value-added resllers or
+appliance manufacturers, will be supplied by those partners. SnertSoft will not support
+the Package without proof of purchase from SnertSoft, such as an Order N&deg; or Invoice N&deg;.
+</p>
+<p>
+Package enhancements requests and product suggestions are always welcome.
 A community mailing list is available; please refer to
 <a href="http://www.snertsoft.com/">SnertSoft</a> web site Support area for details.
 </p>

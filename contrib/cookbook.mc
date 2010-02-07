@@ -89,7 +89,7 @@ dnl R$* $| $+ <@ $* $=w .> $*		$: $1 $| $2 <@ $3 $4 .> $(hasShell $2 $)
 dnl R$* $| $+ <@ $* $=w .> /bin $+	$: $1		is local shell account
 dnl R$* $| $+ <@ $* $=w .> $*		$: $1 $| $2 <@ $3 $4 .> $(virtuser $2 @ $3 $4 $: .NOMATCH $)
 dnl R$* $| $+ <@ $* $=w .> .NOMATCH	$: $1 $| $2 <@ $3 $4 .> $(isAlias $2 $: .NOMATCH $)
-dnl R$* $| $+ <@ $* $=w .> .NOMATCH	$#error $@ 5.7.1 $: "User unknown"
+dnl R$* $| $+ <@ $* $=w .> .NOMATCH	$#error $@ 5.7.1 $: "Sender unknown"
 dnl R$* $| $*				$: $1		a valid or remote address
 dnl # fall through to any other local rules.
 

@@ -16,8 +16,28 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+   ?	consider uri-bl-headers list option
 
---0.12--
+--1.0.0--
+
+   *	Initial commercial source release.
+
+   +	LibSnert 1.73.3
+
+   !	Renamed options
+
+   		dns-bl			>	uri-a-bl
+   		ns-bl			>	uri-ns-bl
+   		test-helo		>	uri-bl-helo
+   		test-sub-domains 	>	uri-bl-sub-domains
+   		policy			>	uri-bl-policy
+   		policy-links		>	links-policy
+   		test-links		>	links-test
+		http-timeout		>	links-timeout
+
+   !	Updated license.
+
+--0.12.34--
 
    +	Requires LibSnert 1.71.5
 

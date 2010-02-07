@@ -129,92 +129,103 @@ typedef struct {
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
-static const char usage_test_sub_domains[] =
+
+static Option optIntro		= { "",			NULL,			"\n# " MILTER_NAME "/" MILTER_VERSION "\n#\n# " MILTER_COPYRIGHT "\n#\n" };
+static Option opt_subject_tag	= { "subject-tag",	SUBJECT_TAG,		"Subject tag for messages identified as spam." };
+
+static const char usage_links_policy[] =
+  "Policy to apply if message contains a broken URL found by +test-links.\n"
+"# Specify one of none, tag, quarantine, reject, or discard.\n"
+"#"
+;
+static Option opt_links_policy	= { "links-policy",	"tag",			usage_links_policy };
+
+static Option opt_links_test	= { "links-test",	"-",			"Verify HTTP links are valid and find origin server." };
+
+static Option opt_links_timeout	= { "links-timeout",	"60",			"Socket timeout used when testing HTTP links." };
+
+static const char usage_uri_bl[] =
+  "A list of domain name black list suffixes to consult, like .multi.surbl.org.\n"
+"# The domain name found in a URI is checked against these DNS black lists.\n"
+"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
+"# is the same as suffix/0x00FFFFFE.\n"
+"#"
+;
+static Option opt_uri_bl	= { "uri-bl",		".multi.surbl.org",	usage_uri_bl };
+
+static const char usage_uri_bl_helo[] =
+  "Test the HELO/EHLO argument using the uri-bl, uri-a-bl, and uri-ns-bl\n"
+"# options. Reject the command if black listed.\n"
+"#"
+;
+static Option opt_uri_bl_helo	= { "uri-bl-helo",	"-",			usage_uri_bl_helo };
+
+static const char usage_uri_bl_sub_domains[] =
   "When querying against name based black lists, like .multi.surbl.org\n"
 "# or .black.uribl.com, first test the registered domain, then any \n"
 "# sub-domains from right-to-left. Typically sub-domains are not listed.\n"
 "#"
 ;
+static Option opt_uri_bl_sub_domains = { "uri-bl-sub-domains", "-",		usage_uri_bl_sub_domains };
 
-static const char usage_policy_bl[] =
-  "Policy to apply if message contains a black listed URI found by dns-bl\n"
-"# or uri-bl. Specify one of none, tag, quarantine, reject, or discard.\n"
-"#"
-;
-
-static const char usage_policy_links[] =
-  "Policy to apply if message contains a broken URL found by +test-links.\n"
-"# Specify one of none, tag, quarantine, reject, or discard.\n"
-"#"
-;
-
-static const char usage_dns_bl[] =
-  "A list of IP based DNS BL suffixes to consult, like sbl-xbl.spamhaus.org.\n"
+static const char usage_uri_a_bl[] =
+  "A list of IP black list suffixes to consult, like sbl-xbl.spamhaus.org.\n"
+"# The host or domain name found in a URI is used to find its DNS A record\n"
+"# and IP address, which is then checked against these IP DNS black lists.\n"
 "# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
 "# is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
+static Option opt_uri_a_bl	= { "uri-a-bl",		"",			usage_uri_a_bl };
 
-static const char usage_ns_bl[] =
-  "A list of name based NS BL suffixes to consult. Aggregate lists are\n"
-"# supported using suffix/mask. Without a /mask, suffix is the same as\n"
-"# suffix/0x00FFFFFE.\n"
+static const char usage_uri_ns_bl[] =
+  "A list of host name and/or domain name black list suffixes to consult. The\n"
+"# domain name found in a URI is used to find its DNS NS records; the NS host\n"
+"# names are checked against these host name and/or domain name DNS black\n"
+"# lists. Aggregate lists are supported using suffix/mask. Without a /mask,\n"
+"# suffix is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
+static Option opt_uri_ns_bl	= { "uri-ns-bl",	"",			usage_uri_ns_bl };
 
-static const char usage_uri_bl[] =
-  "A list of name based DNS BL suffixes to consult, like .multi.surbl.org.\n"
-"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
-"# is the same as suffix/0x00FFFFFE.\n"
+static const char usage_uri_bl_policy[] =
+  "Policy to apply if message contains a black listed URI found by uri-bl,\n"
+"# uri-a-bl, uri-ns-bl. Specify one of none, tag, quarantine, reject, or\n"
+"# discard.\n"
 "#"
 ;
-
-static const char usage_test_helo[] =
-  "Test the HELO/EHLO argument using the uri-bl and dns-bl options\n"
-"# Reject the command if black listed.\n"
-"#"
-;
-
-static Option optIntro		= { "",			NULL,			"\n# " MILTER_NAME "/" MILTER_VERSION "\n#\n# " MILTER_COPYRIGHT "\n#\n" };
-static Option optDnsBL		= { "dns-bl",		"",			usage_dns_bl };
-static Option optHttpTimeout	= { "http-timeout",	"60",			"Socket timeout used when testing HTTP links." };
-static Option optPolicyBL	= { "policy",		"reject",		usage_policy_bl };
-static Option optPolicyLinks	= { "policy-links",	"tag",			usage_policy_links };
-static Option optSubjectTag	= { "subject-tag",	SUBJECT_TAG,		"Subject tag for messages identified as spam." };
-static Option optTestHelo	= { "test-helo",	"-",			usage_test_helo };
-static Option optTestLinks	= { "test-links",	"-",			"Verify HTTP links are valid and find origin server." };
-static Option optTestSubDomains = { "test-sub-domains", "-",                    usage_test_sub_domains };
-static Option optNsBL		= { "ns-bl",		"",			usage_ns_bl };
-static Option optUriBL		= { "uri-bl",		".multi.surbl.org",	usage_uri_bl };
+static Option opt_uri_bl_policy	= { "uri-bl-policy",	"reject",		usage_uri_bl_policy };
 
 static const char usage_mail_bl[] =
-  "A list of name based MAIL BL suffixes to consult. Aggregate lists are\n"
-"# supported using suffix/mask. Without a /mask, suffix is the same as\n"
+  "A list of mail address black list suffixes to consult. The MAIL FROM:\n"
+"# address and mail addresses found in select headers and the message are MD5\n"
+"# hashed, which are then checked against these black lists. Aggregate lists\n"
+"# are supported using suffix/mask. Without a /mask, suffix is the same as\n"
 "# suffix/0x00FFFFFE.\n"
-"#"
+"# "
 ;
-Option optMailBl		= { "mail-bl",		"",			usage_mail_bl };
+Option opt_mail_bl		= { "mail-bl",		"",			usage_mail_bl };
 
 static const char usage_mail_bl_headers[] =
   "A list of mail headers to parse for mail addresses and check against\n"
-"# one or more MAIL BL. Specify the empty list to disable.\n"
+"# one or more mail address black lists. Specify the empty list to disable.\n"
 "#"
 ;
-Option optMailBlHeaders		= { "mail-bl-headers",	"From;Reply-To",	usage_mail_bl_headers };
+Option opt_mail_bl_headers	= { "mail-bl-headers",	"From;Reply-To",	usage_mail_bl_headers };
 
 static const char usage_mail_bl_max[] =
   "Maximum number of unique mail addresses to check. Specify zero for\n"
 "# unlimited.\n"
 "#"
 ;
-Option optMailBlMax		= { "mail-bl-max",	"10",			usage_mail_bl_max };
+Option opt_mail_bl_max		= { "mail-bl-max",	"10",			usage_mail_bl_max };
 
 static const char usage_mail_bl_policy[] =
   "Check if the message contains a black listed mail address found by\n"
 "# mail-bl.  Specify one of none, tag, quarantine, reject, or discard.\n"
 "#"
 ;
-Option optMailBlPolicy		= { "mail-bl-policy",	"reject",		usage_mail_bl_policy };
+Option opt_mail_bl_policy	= { "mail-bl-policy",	"reject",		usage_mail_bl_policy };
 
 static const char usage_mail_bl_domains[] =
   "A list of domain glob-like patterns for which to test against mail-bl,\n"
@@ -222,7 +233,7 @@ static const char usage_mail_bl_domains[] =
 "# Specify * to test all domains, empty list to disable.\n"
 "#"
 ;
-Option optMailBlDomains		= {
+Option opt_mail_bl_domains	= {
 	"mail-bl-domains",
 
 	 "gmail.*"
@@ -270,23 +281,23 @@ static Option *optTable[] = {
 #ifdef DROPPED_ADD_HEADERS
 	&optAddHeaders,
 #endif
-	&optDnsBL,
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
-	&optHttpTimeout,
-	&optMailBl,
-	&optMailBlDomains,
-	&optMailBlHeaders,
-	&optMailBlMax,
-	&optMailBlPolicy,
-	&optNsBL,
-	&optPolicyBL,
-	&optPolicyLinks,
-	&optSubjectTag,
-	&optTestHelo,
-	&optTestLinks,
-	&optTestSubDomains,
-	&optUriBL,
+	&opt_mail_bl,
+	&opt_mail_bl_domains,
+	&opt_mail_bl_headers,
+	&opt_mail_bl_max,
+	&opt_mail_bl_policy,
+	&opt_links_policy,
+	&opt_links_test,
+	&opt_links_timeout,
+	&opt_subject_tag,
+	&opt_uri_a_bl,
+	&opt_uri_bl,
+	&opt_uri_bl_helo,
+	&opt_uri_bl_policy,
+	&opt_uri_bl_sub_domains,
+	&opt_uri_ns_bl,
 	NULL
 };
 
@@ -309,11 +320,11 @@ testMail(workspace data, const char *mail)
 
 	rc = SMFIS_CONTINUE;
 
-	if (data->policy == '\0' && VectorLength(data->mail_tested) < optMailBlMax.value
+	if (data->policy == '\0' && VectorLength(data->mail_tested) < opt_mail_bl_max.value
 	&& (list_name = dnsListQueryMail(mail_bl_list, data->pdq, mail_bl_domains, data->mail_tested, mail)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_MAIL_FORMAT, mail, list_name);
 		dnsListLog(data->work.qid, mail, list_name);
-		data->policy = *optMailBlPolicy.string;
+		data->policy = *opt_mail_bl_policy.string;
 		rc = data->policy == 'r' ? SMFIS_REJECT : SMFIS_CONTINUE;
 	}
 
@@ -408,40 +419,40 @@ testURI(workspace data, URI *uri)
 	}
 
 	/* Test and follow redirections so verify that the link returns something valid. */
-	if (optTestLinks.value && (error = uriHttpOrigin(uri->uri, &origin)) != NULL) {
+	if (opt_links_test.value && (error = uriHttpOrigin(uri->uri, &origin)) != NULL) {
 		if (error == uriErrorNotHttp || error == uriErrorPort)
 			goto ignore0;
 
 		snprintf(data->reply, sizeof (data->reply), "broken URL \"%s\": %s", uri->uri, error);
-		data->policy = *optPolicyLinks.string;
+		data->policy = *opt_links_policy.string;
 		goto error0;
 	}
 
 	are_different = origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0;
 
-	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, uri->host)) != NULL) {
+	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
-		data->policy = *optPolicyBL.string;
+		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
-	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, optTestSubDomains.value, origin->host)) != NULL) {
+	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
 		dnsListLog(data->work.qid, origin->host, list_name);
-		data->policy = *optPolicyBL.string;
+		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 
 	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
-		data->policy = *optPolicyBL.string;
+		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 	if (are_different && (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
 		dnsListLog(data->work.qid, origin->host, list_name);
-		data->policy = *optPolicyBL.string;
+		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 
@@ -465,7 +476,7 @@ testNS(workspace data, const char *host)
 
 	if ((list_name = dnsListQueryNs(ns_bl_list, data->pdq, data->ns_tested, host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, host, list_name);
-		data->policy = *optPolicyBL.string;
+		data->policy = *opt_uri_bl_policy.string;
 		return 1;
 	}
 
@@ -828,7 +839,6 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 			}
 
 			if (rc == 0 && uriGetSchemePort(uri) == 25) {
-				smfLog(SMF_LOG_DEBUG, TAG_FORMAT "checking <%s>...", TAG_ARGS, uri->uriDecoded);
 				rc = testMail(data, uri->uriDecoded);
 			}
 
@@ -871,7 +881,6 @@ filterEndMessage(SMFICTX *ctx)
 			}
 
 			if (rc == 0 && uriGetSchemePort(uri) == 25) {
-				smfLog(SMF_LOG_DEBUG, TAG_FORMAT "checking <%s>...", TAG_ARGS, uri->uriDecoded);
 				rc = testMail(data, uri->uriDecoded);
 			}
 
@@ -894,8 +903,8 @@ filterEndMessage(SMFICTX *ctx)
 			/*@fallthrough@*/
 #endif
 		case 't':
-			if (TextInsensitiveStartsWith(data->subject, optSubjectTag.string) < 0) {
-				(void) snprintf(data->line, sizeof (data->line), "%s %s", optSubjectTag.string, data->subject);
+			if (TextInsensitiveStartsWith(data->subject, opt_subject_tag.string) < 0) {
+				(void) snprintf(data->line, sizeof (data->line), "%s %s", opt_subject_tag.string, data->subject);
 				(void) smfHeaderSet(ctx, "Subject", data->line, 1, data->hasSubject);
 			}
 			break;
@@ -1069,16 +1078,16 @@ main(int argc, char **argv)
 	(void) smfi_settimeout((int) smfOptMilterTimeout.value);
 	(void) smfSetLogDetail(smfOptVerbose.string);
 
-	uriSetTimeout(optHttpTimeout.value * 1000);
+	uriSetTimeout(opt_links_timeout.value * 1000);
 
-	ns_bl_list = dnsListCreate(optNsBL.string);
-	ip_bl_list = dnsListCreate(optDnsBL.string);
-	uri_bl_list = dnsListCreate(optUriBL.string);
-	mail_bl_list = dnsListCreate(optMailBl.string);
-	mail_bl_headers = TextSplit(optMailBlHeaders.string, ";, ", 0);
-	mail_bl_domains = TextSplit(optMailBlDomains.string, ";, ", 0);
+	ns_bl_list = dnsListCreate(opt_uri_ns_bl.string);
+	ip_bl_list = dnsListCreate(opt_uri_a_bl.string);
+	uri_bl_list = dnsListCreate(opt_uri_bl.string);
+	mail_bl_list = dnsListCreate(opt_mail_bl.string);
+	mail_bl_headers = TextSplit(opt_mail_bl_headers.string, ";, ", 0);
+	mail_bl_domains = TextSplit(opt_mail_bl_domains.string, ";, ", 0);
 
-	switch (*optPolicyBL.string) {
+	switch (*opt_uri_bl_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
 	case 'q':
 		milter.handlers.xxfi_flags |= SMFIF_QUARANTINE;
@@ -1090,7 +1099,7 @@ main(int argc, char **argv)
 		break;
 	}
 
-	switch (*optPolicyLinks.string) {
+	switch (*opt_links_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
 	case 'q':
 		milter.handlers.xxfi_flags |= SMFIF_QUARANTINE;
@@ -1102,7 +1111,7 @@ main(int argc, char **argv)
 		break;
 	}
 
-	switch (*optMailBlPolicy.string) {
+	switch (*opt_mail_bl_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
 	case 'q':
 		milter.handlers.xxfi_flags |= SMFIF_QUARANTINE;
