@@ -62,6 +62,8 @@ MILTER_BUILD=`cat BUILD_ID.TXT`
 
 #######################################################################
 
+.MAIN: build
+
 build : ${MILTER}
 	@echo
 	@echo '***************************************************************'
@@ -70,14 +72,14 @@ build : ${MILTER}
 	@echo
 
 clean:
-	-rm -f *.o ${MILTER} *.exe
+	-rm -f *.o ${MILTER} *.exe ${MILTER}.cf
 	@echo
 	@echo '***************************************************************'
 	@echo Clean DONE
 	@echo '***************************************************************'
 	@echo
 
-distclean:
+distclean: clean
 	@echo '---------------------------------------------------------------'
 	-rm -f ${MILTER}.md5 *.o *.obj *.tds *.log *.exe *.core
 	-rm -f sample.mc startup.sh install.sh config.h makefile
@@ -108,7 +110,7 @@ restart:
 	-./${MILTER} -restart
 
 install: ${MILTER} install.sh
-	sh install.sh
+	@sh install.sh
 
 install.sh: install.sh.in config.status
 

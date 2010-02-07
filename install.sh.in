@@ -53,64 +53,60 @@ hasCommand()
 }
 
 # Create group and user if necessary...
-if grep "^$GROUP:" /etc/group >/dev/null ; then
+if id ${USER} >/dev/null 2>&1; then
 	:
 else
-	case $UNAME in
-	FreeBSD)
-		pw groupadd -n $GROUP
-		;;
-	*)
-		groupadd $GROUP
-	esac
-fi
-if id $USER >/dev/null 2>&1; then
-	:
-else
+	echo "Creating..... ${USER}:${GROUP}"
 	if grep '^smmsp:' /etc/group >/dev/null ; then
 		HAS_SMMSP='-G smmsp '
 	fi
 	case $UNAME in
 	FreeBSD)
-		pw useradd -g $GROUP $HAS_SMMSP -n $USER
+		pw groupadd -n ${GROUP}
+		pw useradd -n ${USER} -g ${GROUP} ${HAS_SMMSP} -c "${MILTER} process" -d /var/empty -s /usr/sbin/nologin
 		;;
 	*)
-		useradd -g $GROUP $HAS_SMMSP $USER
+		groupadd ${GROUP}
+		useradd -g ${GROUP} ${HAS_SMMSP} -c "${MILTER} process" -d /var/empty -s /sbin/nologin ${USER} >/dev/null
 	esac
 fi
 
 if test -d $libexecdir -a $UNAME != 'Linux' ; then
-	program=$libexecdir/$MILTER
+	program=$libexecdir/${MILTER}
 else
 	# Linux tends not to come with a /usr/local/libexec and the
 	# FHS is silent about it. They prefer to put system daemons
 	# in sbin, unlike BSD systems that prefer libexec. A milter
 	# is a daemon consulted by sendmail systems.
-	program=$sbindir/$MILTER
+	program=$sbindir/${MILTER}
 fi
 
+INSTALL_WHEEL="${INSTALL_O} root -g 0"
+INSTALL_GROUP="${INSTALL_O} root -g ${GROUP}"
+INSTALL_USER="${INSTALL_O} ${USER} -g ${GROUP}"
+
 # Always use this location. Linux FHS is silent about it. OpenBSD favours it.
-examples=$datadir/examples/$MILTER
-doc=$datadir/doc/$MILTER
+examples=$datadir/examples/${MILTER}
+doc=$datadir/doc/${MILTER}
 run=$localstatedir/run/milter
 
 # Find location of common startup script directories...
 if test -d /etc/init.d ; then
 	# Debian Linux
-	startup_script="/etc/init.d/$MILTER"
+	startup_script="/etc/init.d/${MILTER}"
 elif test -d /etc/rc.d/init.d ; then
-	# Older Linux, System V structure?	
-	startup_script="/etc/rc.d/init.d/$MILTER"
+	# Older Linux, System V structure?
+	startup_script="/etc/rc.d/init.d/${MILTER}"
 elif test -d /usr/local/etc/rc.d ; then
 	# FreeBSD
-	startup_script="/usr/local/etc/rc.d/$MILTER.sh"
+	startup_script="/usr/local/etc/rc.d/${MILTER}.sh"
 else
 	# OpenBSD policy is for root to install startup scripts by hand.
 	startup_script='NO'
 fi
 
 if test $UNAME = 'SunOS' ; then
-	# There are two different install tools. 
+	# There are two different install tools.
 	if test -x /usr/ucb/install ; then
 		INSTALL=/usr/ucb/install
 		INSTALL_O='-o'
@@ -120,7 +116,6 @@ if test $UNAME = 'SunOS' ; then
 	fi
 fi
 
-echo
 if test $startup_script = NO ; then
 	:
 elif test -f $startup_script ; then
@@ -138,7 +133,7 @@ elif test -f $startup_script ; then
 			read yn
 			if test ${yn:=n} = 'n' -o ${yn} = 'y' ; then
 				break;
-			fi		
+			fi
 		done
 
 		if test "X$yn" = 'Xy' ; then
@@ -152,11 +147,11 @@ elif test -f $startup_script ; then
 			read yn
 			if test ${yn:=n} = 'n' -o ${yn} = 'y' ; then
 				break;
-			fi		
+			fi
 		done
 
 		if test "X$yn" = 'Xy' ; then
-			$INSTALL -m 555 $INSTALL_O root -g $GROUP startup.sh $startup_script
+			$INSTALL -m 555 $INSTALL_O root -g ${GROUP} startup.sh $startup_script
 			if hasCommand chkconfig ; then
 				# Red Hat Linux
 				chkconfig --add ${MILTER}
@@ -169,7 +164,7 @@ elif test -f $startup_script ; then
 		fi
 	fi
 else
-	$INSTALL -m 555 $INSTALL_O root -g $GROUP startup.sh $startup_script
+	$INSTALL -m 555 $INSTALL_O root -g ${GROUP} startup.sh $startup_script
 	if hasCommand chkconfig ; then
 		# Red Hat Linux
 		chkconfig --add ${MILTER}
@@ -179,73 +174,53 @@ else
 	fi
 fi
 
-if test -f manual.shtml ; then
-	$INSTALL -m 555 -d $doc
-	$INSTALL -m 555 manual.shtml $doc/manual.html
-fi
+echo 'Installing...' $program
+$INSTALL -m 555 $INSTALL_GROUP ${MILTER} $program
 
+echo 'Creating.....' $doc
+$INSTALL -m 555 -d $doc/Img
+
+echo 'Installing...' $doc
+$INSTALL -m 444 FILE.TXT $doc
+$INSTALL -m 444 CHANGES.TXT $doc
+$INSTALL -m 444 VERSION.TXT $doc
+$INSTALL -m 444 manual.shtml $doc/manual.shtml
+cd $doc >/dev/null; ln -s manual.shtml index.shtml 2>/dev/null; cd - >/dev/null
+$INSTALL -m 444 mailto.js $doc
+$INSTALL -m 444 style.css $doc
+$INSTALL -m 444 Img/*.gif $doc/Img
+#$INSTALL -m 444 doc/Img/*.jpg $doc/Img
+$INSTALL -m 444 Img/*.png $doc/Img
+
+echo 'Creating.....' $examples
 $INSTALL -m 555 -d $examples
-$INSTALL -m 555 sample.mc $examples/$MILTER.mc
-$INSTALL -m 555 startup.sh $examples/$MILTER.sh
 
-if test -d examples; then
-	$INSTALL -m 555 examples/* $examples
-fi
-if test -f rc.milters ; then
-	$INSTALL -m 555 rc.milters $examples/rc.milters
-fi
+echo 'Installing...' $examples
+$INSTALL -m 444 sample.mc $examples/${MILTER}.mc
+$INSTALL -m 444 startup.sh $examples/${MILTER}.sh
+$INSTALL -m 444 rc.milters $examples/rc.milters
+./${MILTER} -help >${MILTER}.cf
+$INSTALL -m 444 ${MILTER}.cf $examples/${MILTER}.cf
 
-if test -f $MILTER.cf ; then
-	$INSTALL -m 555 $MILTER.cf $examples/$MILTER.cf
-fi
-
-if test -d $localstatedir/db ; then
-	$INSTALL -m 755 $INSTALL_O $USER -g $GROUP -d $localstatedir/db/milter
-fi
 if test -d $localstatedir/cache ; then
-	$INSTALL -m 755 $INSTALL_O $USER -g $GROUP -d $localstatedir/cache/milter
+	echo 'Creating.....' $localstatedir/cache/milter
+	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/cache/milter
+elif test -d $localstatedir/db ; then
+	echo 'Creating.....' $localstatedir/db/milter
+	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/db/milter
 fi
 if test -d $localstatedir/run ; then
-	$INSTALL -m 755 $INSTALL_O $USER -g $GROUP -d $localstatedir/run/milter
+	echo 'Creating.....' $localstatedir/run/milter
+	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/run/milter
 fi
-
-$INSTALL -m 555 $INSTALL_O root -g ${GROUP} $MILTER $program
 
 echo
 echo '***************************************************************'
 echo
-echo 'The following files were installed:'
-echo
-echo "  $program"
-if test -f manual.shtml ; then
-echo "  $doc/manual.html"
-fi
-if test -f sample.mc ; then
-echo "  $examples/$MILTER.mc"
-fi
-if test -f startup.sh ; then
-echo "  $examples/$MILTER.sh"
-fi
-if test -f $MILTER.cf ; then
-echo "  $examples/$MILTER.cf"
-fi
-if test -f rc.milters ; then
-echo "  $examples/rc.milters"
-fi
-if test -d examples; then
-	for file in examples/*; do 
-		file=`basename $file`
-echo "  $examples/$file"
-	done
-fi
-if test "X$startup_script" != 'XNO' ; then
-echo "  $startup_script"
-fi
-echo
 echo 'Remember to review the sample configuration files above with'
 echo 'your current configuration as existing options sometimes are'
 echo 'deleted or renamed, and new ones added between revisions.'
-echo 
+echo
 if test $UNAME = 'OpenBSD' ; then
 echo 'Remember to modify your /etc/rc or /etc/rc.local script to '
 echo 'startup the milter before sendmail on system boot.'
@@ -262,7 +237,7 @@ echo "configuration into the sendmail.mc file, rebuild sendmail.cf,"
 echo "start the milter, and restart sendmail. See the documentation"
 echo "and"
 echo
-echo "  $examples/$MILTER.mc"
+echo "  $examples/${MILTER}.mc"
 echo
 echo '***************************************************************'
 echo

@@ -6,13 +6,13 @@
 #	Thus it begins...
 #######################################################################
 
-AC_INIT(milter-link, 1.0, [Anthony Howe <achowe@snert.com>])
+AC_INIT(milter-link, 1.1, [Anthony Howe <achowe@snert.com>])
 
 dnl The autoconf version I learned to deal with.
 AC_PREREQ(2.59)
 
 dnl Yes I wrote this mess.
-SNERT_INIT(MILTER, [Copyright 2006, 2009 by Anthony Howe. All rights reserved.])
+SNERT_INIT(MILTER, [Copyright 2006, 2010 by Anthony Howe. All rights reserved.])
 
 AC_SUBST(snert_milter_t_equate, 'C:10s;R:1m;E:5m')
 

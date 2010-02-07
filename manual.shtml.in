@@ -654,6 +654,16 @@ reason then apply the policy given by <a href="#opt_links_policy">links-policy</
 <dd>The file path of where to save the process-id.
 </dd>
 
+<a name="opt_port_list"></a>
+<dt><span class="syntax">port-list=</span><span class="param"></span></dt>
+<dd>
+A list of port numbers corresponding to protocols to test. Some sites
+prefer to focus on web and/or email related URI. This option provides
+a means to restrict the scope of testing to a specific subset of URI
+by port number. An empty list means all URI are tested.
+</dd>
+
+
 <a name="opt_quit"></a>
 <dt><span class="syntax">-quit</span> or <span class="syntax">+quit</span></dt>
 <dd>Quit an already running instance of the milter and exit.
@@ -719,6 +729,17 @@ The domain name found in a URI is checked against these DNS black lists.
 Aggregate lists are supported using <code class="param">suffix/mask</code>.
 Without a <code class="param">/mask</code>, suffix
 is the same as <code class="param">suffix/0x00FFFFFE</code>.
+</dd>
+
+<a name="opt_uri_bl_helo"></a>
+<dt><span class="syntax">uri-bl-headers=</span><span class="param">X-Originating-IP</span></dt>
+<dd>
+A list of mail headers to parse for URI and check using the
+<a href="#opt_uri_bl">uri-bl</a>,
+<a href="#opt_uri_a_bl">uri-a-bl</a>, and
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>
+options.
+Specify the empty list to disable.
 </dd>
 
 <a name="opt_uri_bl_helo"></a>

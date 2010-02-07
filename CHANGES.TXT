@@ -18,6 +18,16 @@ is no set schedule for releases.
 
    ?	consider uri-bl-headers list option
 
+--1.1.0--
+
+   +	Added uri-bl-headers list option.
+
+   !	Code for uri-bl-helo was incomplete.
+
+   !	Cleaned up install script.
+
+   +	Added port-list option
+
 --1.0.0--
 
    *	Initial commercial source release.

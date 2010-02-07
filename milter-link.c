@@ -89,8 +89,8 @@
 #include <com/snert/lib/util/getopt.h>
 #include <com/snert/lib/util/uri.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 71
-# error "LibSnert/1.71 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73
+# error "LibSnert/1.73 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -130,6 +130,9 @@ typedef struct {
 } *workspace;
 
 
+static const char black_listed_url_format[] = BLACK_LISTED_URL_FORMAT;
+static const char black_listed_mail_format[] = BLACK_LISTED_MAIL_FORMAT;
+
 static Option optIntro		= { "",			NULL,			"\n# " MILTER_NAME "/" MILTER_VERSION "\n#\n# " MILTER_COPYRIGHT "\n#\n" };
 static Option opt_subject_tag	= { "subject-tag",	SUBJECT_TAG,		"Subject tag for messages identified as spam." };
 
@@ -152,6 +155,13 @@ static const char usage_uri_bl[] =
 "#"
 ;
 static Option opt_uri_bl	= { "uri-bl",		".multi.surbl.org",	usage_uri_bl };
+
+static const char usage_uri_bl_headers[] =
+  "A list of mail headers to parse for URI and check using the uri-bl,\n"
+"# uri-a-bl, and uri-ns-bl options. Specify the empty list to disable.\n"
+"#"
+;
+static Option opt_uri_bl_headers = { "uri-bl-headers",	"X-Originating-IP",	usage_uri_bl_headers };
 
 static const char usage_uri_bl_helo[] =
   "Test the HELO/EHLO argument using the uri-bl, uri-a-bl, and uri-ns-bl\n"
@@ -272,6 +282,15 @@ Option opt_mail_bl_domains	= {
 	, usage_mail_bl_domains
 };
 
+static const char usage_port_list[] =
+  "A list of port numbers corresponding to protocols to test. Some sites\n"
+"# prefer to focus on web and/or email related URI. This option provides\n"
+"# a means to restrict the scope of testing to a specific subset of URI\n"
+"# by port number. An empty list means all URI are tested.\n"
+"#"
+;
+static Option opt_port_list	= { "port-list",	"",			usage_port_list };
+
 #ifdef DROPPED_ADD_HEADERS
 static Option optAddHeaders	= { "add-headers",	"-",			"Add extra informational headers when message passes." };
 #endif
@@ -291,9 +310,11 @@ static Option *optTable[] = {
 	&opt_links_policy,
 	&opt_links_test,
 	&opt_links_timeout,
+	&opt_port_list,
 	&opt_subject_tag,
 	&opt_uri_a_bl,
 	&opt_uri_bl,
+	&opt_uri_bl_headers,
 	&opt_uri_bl_helo,
 	&opt_uri_bl_policy,
 	&opt_uri_bl_sub_domains,
@@ -309,10 +330,13 @@ DnsList *ip_bl_list;
 DnsList *ns_bl_list;
 DnsList *uri_bl_list;
 DnsList *mail_bl_list;
+Vector uri_bl_headers;
 Vector mail_bl_headers;
 Vector mail_bl_domains;
+Vector port_list;
+long *ports;
 
-sfsistat
+static sfsistat
 testMail(workspace data, const char *mail)
 {
 	sfsistat rc;
@@ -322,7 +346,7 @@ testMail(workspace data, const char *mail)
 
 	if (data->policy == '\0' && VectorLength(data->mail_tested) < opt_mail_bl_max.value
 	&& (list_name = dnsListQueryMail(mail_bl_list, data->pdq, mail_bl_domains, data->mail_tested, mail)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_MAIL_FORMAT, mail, list_name);
+		snprintf(data->reply, sizeof (data->reply), black_listed_mail_format, mail, list_name);
 		dnsListLog(data->work.qid, mail, list_name);
 		data->policy = *opt_mail_bl_policy.string;
 		rc = data->policy == 'r' ? SMFIS_REJECT : SMFIS_CONTINUE;
@@ -333,14 +357,20 @@ testMail(workspace data, const char *mail)
 	return rc;
 }
 
+sfsistat
+testMailUri(workspace data, URI *uri)
+{
+	return testMail(data, uri->uriDecoded);
+}
+
 static sfsistat
-testMailString(workspace data, const char *value)
+testString(workspace data, const char *value, sfsistat (*test_fn)(workspace, URI *))
 {
 	int rc;
 	URI *uri;
 	Mime *mime;
 
-	if ((mime = uriMimeCreate(0)) == NULL)
+	if (value == NULL || (mime = uriMimeCreate(0)) == NULL)
 		return SMFIS_CONTINUE;
 
 	mimeHeadersFirst(mime, 0);
@@ -350,7 +380,7 @@ testMailString(workspace data, const char *value)
 			break;
 
 		if ((uri = uriMimeGetUri(mime)) != NULL) {
-			rc = testMail(data, uri->uriDecoded);
+			rc = (*test_fn)(data, uri);
 			uriMimeFreeUri(mime);
 		}
 	}
@@ -360,7 +390,7 @@ testMailString(workspace data, const char *value)
 	return rc;
 }
 
-static int
+static sfsistat
 testURI(workspace data, URI *uri)
 {
 	long i;
@@ -368,10 +398,21 @@ testURI(workspace data, URI *uri)
 	const char *error;
 	URI *origin = NULL;
 	const char *list_name = NULL;
-	int are_different, access, rc = -1;
+	int are_different, access, rc = SMFIS_REJECT;
 
 	if (uri == NULL)
-		return 0;
+		return SMFIS_CONTINUE;
+
+	if (ports != NULL) {
+		long *p;
+		for (p = ports; 0 <= *p; p++) {
+			if (uriGetSchemePort(uri) == *p)
+				break;
+		}
+
+		if (*p < 0)
+			return SMFIS_CONTINUE;
+	}
 
 	if (uri->host == NULL)
 		goto ignore0;
@@ -401,6 +442,7 @@ testURI(workspace data, URI *uri)
 	case SMDB_ACCESS_REJECT:
 		snprintf(data->reply, sizeof (data->reply), "rejected URL host %s", uri->host);
 		data->policy = 'r';
+		rc = SMFIS_REJECT;
 		goto error0;
 	case SMDB_ACCESS_OK:
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> OK", TAG_ARGS, uri->uri);
@@ -431,27 +473,34 @@ testURI(workspace data, URI *uri)
 	are_different = origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0;
 
 	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
 		dnsListLog(data->work.qid, origin->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 
 	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, uri->host, list_name);
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 	if (are_different && (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, origin->host, list_name);
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
 		dnsListLog(data->work.qid, origin->host, list_name);
+		data->policy = *opt_uri_bl_policy.string;
+		goto error1;
+	}
+
+	if ((list_name = dnsListQueryNs(ns_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
+		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
@@ -460,7 +509,7 @@ testURI(workspace data, URI *uri)
 ignore1:
 	(void) VectorAdd(data->uri_tested, strdup(uri->host));
 ignore0:
-	rc = 0;
+	rc = SMFIS_CONTINUE;
 error1:
 	free(origin);
 error0:
@@ -469,21 +518,7 @@ error0:
 	return rc;
 }
 
-static int
-testNS(workspace data, const char *host)
-{
-	const char *list_name;
-
-	if ((list_name = dnsListQueryNs(ns_bl_list, data->pdq, data->ns_tested, host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), BLACK_LISTED_URL_FORMAT, host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		return 1;
-	}
-
-	return 0;
-}
-
-static int
+static sfsistat
 testList(workspace data, char *query, const char *delim)
 {
 	URI *uri;
@@ -492,7 +527,7 @@ testList(workspace data, char *query, const char *delim)
 	char *arg, *ptr;
 
 	if (query == NULL)
-		return 0;
+		return SMFIS_CONTINUE;
 
 	args = TextSplit(query, delim, 0);
 
@@ -634,6 +669,9 @@ filterHelo(SMFICTX * ctx, char *helohost)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterHelo(%lx, '%s')", TAG_ARGS, (long) ctx, TextNull(helohost));
 
+	if (opt_uri_bl_helo.value && testString(data, helohost, testURI) == SMFIS_REJECT)
+		return smfReply(&data->work, 550, NULL, "%s", data->reply);
+
 	return SMFIS_CONTINUE;
 }
 
@@ -724,7 +762,6 @@ static sfsistat
 filterHeader(SMFICTX *ctx, char *name, char *value)
 {
 	char *s;
-	URI *uri;
 	sfsistat rc;
 	workspace data;
 	const char **table;
@@ -757,17 +794,13 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	(void) mimeNextCh(data->mime, '\r');
 	(void) mimeNextCh(data->mime, '\n');
 
-	/* Currently we ignore URI found in headers. This might change
-	 * based on demand (see uri CLI and BarricadeMX which support
-	 * testing URI foundin headers).
-	 */
-	if ((uri = uriMimeGetUri(data->mime)) != NULL) {
-		smfLog(SMF_LOG_DIALOG, TAG_FORMAT "clearing uri buffer=%s", TAG_ARGS, TextNull(uri->host));
-		uriMimeFreeUri(data->mime);
+	for (table = (const char **) VectorBase(uri_bl_headers); *table != NULL; table++) {
+		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testString(data, value, testURI)) != SMFIS_CONTINUE)
+			break;
 	}
 
 	for (table = (const char **) VectorBase(mail_bl_headers); *table != NULL; table++) {
-		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testMailString(data, value)) != SMFIS_CONTINUE)
+		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testString(data, value, testMailUri)) != SMFIS_CONTINUE)
 			break;
 	}
 
@@ -794,8 +827,8 @@ filterEndHeaders(SMFICTX *ctx)
 static sfsistat
 filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 {
-	int rc;
 	URI *uri;
+	sfsistat rc;
 	workspace data;
 	unsigned char *stop;
 
@@ -829,21 +862,21 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
 			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
 
-			if ((rc = testURI(data, uri)) == 0 && (rc = testNS(data, uri->host)) == 0) {
+			if ((rc = testURI(data, uri)) == SMFIS_CONTINUE) {
 				if (uri->query == NULL)
 					rc = testList(data, uri->path, "&");
-				else if ((rc = testList(data, uri->query, "&")) == 0)
+				else if ((rc = testList(data, uri->query, "&")) == SMFIS_CONTINUE)
 					rc = testList(data, uri->query, "/");
-				if (rc == 0)
+				if (rc == SMFIS_CONTINUE)
 					rc = testList(data, uri->path, "/");
 			}
 
-			if (rc == 0 && uriGetSchemePort(uri) == 25) {
+			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == 25) {
 				rc = testMail(data, uri->uriDecoded);
 			}
 
 			uriMimeFreeUri(data->mime);
-			if (rc != 0)
+			if (rc != SMFIS_CONTINUE)
 				break;
 		}
 	}
@@ -866,21 +899,22 @@ filterEndMessage(SMFICTX *ctx)
 
 	/* Terminate MIME parsing. */
 	if (mimeNextCh(data->mime, EOF) == 0) {
-		int rc;
 		URI *uri;
+		sfsistat rc;
+
 		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
 			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
 
-			if ((rc = testURI(data, uri)) == 0 && (rc = testNS(data, uri->host)) == 0) {
+			if ((rc = testURI(data, uri)) == SMFIS_CONTINUE) {
 				if (uri->query == NULL)
 					rc = testList(data, uri->path, "&");
 				else if ((rc = testList(data, uri->query, "&")) == 0)
 					rc = testList(data, uri->query, "/");
-				if (rc == 0)
+				if (rc == SMFIS_CONTINUE)
 					rc = testList(data, uri->path, "/");
 			}
 
-			if (rc == 0 && uriGetSchemePort(uri) == 25) {
+			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == 25) {
 				rc = testMail(data, uri->uriDecoded);
 			}
 
@@ -1019,6 +1053,9 @@ atExitCleanUp()
 
 	VectorDestroy(mail_bl_domains);
 	VectorDestroy(mail_bl_headers);
+	VectorDestroy(uri_bl_headers);
+	VectorDestroy(port_list);
+	free(ports);
 
 	smdbClose(smdbAccess);
 	smfAtExitCleanUp();
@@ -1083,9 +1120,22 @@ main(int argc, char **argv)
 	ns_bl_list = dnsListCreate(opt_uri_ns_bl.string);
 	ip_bl_list = dnsListCreate(opt_uri_a_bl.string);
 	uri_bl_list = dnsListCreate(opt_uri_bl.string);
+	uri_bl_headers = TextSplit(opt_uri_bl_headers.string, ";, ", 0);
 	mail_bl_list = dnsListCreate(opt_mail_bl.string);
 	mail_bl_headers = TextSplit(opt_mail_bl_headers.string, ";, ", 0);
 	mail_bl_domains = TextSplit(opt_mail_bl_domains.string, ";, ", 0);
+	port_list = TextSplit(opt_port_list.string, ";, ", 0);
+
+	if (0 < VectorLength(port_list)) {
+		int i;
+		ports = malloc(sizeof (long) * (VectorLength(port_list) + 1));
+
+		for (i = 0; i < VectorLength(port_list); i++) {
+			char *port = VectorGet(port_list, i);
+			ports[i] = strtol(port, NULL, 10);
+		}
+		ports[i] = -1;
+	}
 
 	switch (*opt_uri_bl_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
