@@ -282,14 +282,14 @@ Option opt_mail_bl_domains	= {
 	, usage_mail_bl_domains
 };
 
-static const char usage_port_list[] =
+static const char usage_uri_bl_port_list[] =
   "A list of port numbers corresponding to protocols to test. Some sites\n"
 "# prefer to focus on web and/or email related URI. This option provides\n"
 "# a means to restrict the scope of testing to a specific subset of URI\n"
 "# by port number. An empty list means all URI are tested.\n"
 "#"
 ;
-static Option opt_port_list	= { "port-list",	"",			usage_port_list };
+static Option opt_uri_bl_port_list = { "uri-bl-port-list",	"",		usage_uri_bl_port_list };
 
 #ifdef DROPPED_ADD_HEADERS
 static Option optAddHeaders	= { "add-headers",	"-",			"Add extra informational headers when message passes." };
@@ -310,13 +310,13 @@ static Option *optTable[] = {
 	&opt_links_policy,
 	&opt_links_test,
 	&opt_links_timeout,
-	&opt_port_list,
 	&opt_subject_tag,
 	&opt_uri_a_bl,
 	&opt_uri_bl,
 	&opt_uri_bl_headers,
 	&opt_uri_bl_helo,
 	&opt_uri_bl_policy,
+	&opt_uri_bl_port_list,
 	&opt_uri_bl_sub_domains,
 	&opt_uri_ns_bl,
 	NULL
@@ -1124,7 +1124,7 @@ main(int argc, char **argv)
 	mail_bl_list = dnsListCreate(opt_mail_bl.string);
 	mail_bl_headers = TextSplit(opt_mail_bl_headers.string, ";, ", 0);
 	mail_bl_domains = TextSplit(opt_mail_bl_domains.string, ";, ", 0);
-	port_list = TextSplit(opt_port_list.string, ";, ", 0);
+	port_list = TextSplit(opt_uri_bl_port_list.string, ";, ", 0);
 
 	if (0 < VectorLength(port_list)) {
 		int i;
