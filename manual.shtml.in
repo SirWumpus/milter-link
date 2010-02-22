@@ -723,6 +723,7 @@ is the same as <code class="param">suffix/0x00FFFFFE</code>.
 
 <a name="opt_uri_bl"></a>
 <dt><span class="syntax">uri-bl=</span><span class="param">.multi.surbl.org</span></dt>
+<dt><span class="syntax">uri-bl+=</span><span class="param">.black.uribl.com</span></dt>
 <dd>
 A comma or semi-colon separated list of domain name black list suffixes to consult, like <code>.multi.surbl.org</code>.
 The domain name found in a URI is checked against these DNS black lists.
@@ -736,8 +737,9 @@ is the same as <code class="param">suffix/0x00FFFFFE</code>.
 <dd>
 A list of mail headers to parse for URI and check using the
 <a href="#opt_uri_bl">uri-bl</a>,
-<a href="#opt_uri_a_bl">uri-a-bl</a>, and
-<a href="#opt_uri_ns_bl">uri-ns-bl</a>
+<a href="#opt_uri_a_bl">uri-a-bl</a>,
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
+<a href="#opt_uri_ns_a_bl">uri-ns-a-bl</a>
 options.
 Specify the empty list to disable.
 </dd>
@@ -747,8 +749,9 @@ Specify the empty list to disable.
 <dd>
 Test the HELO/EHLO argument using the
 <a href="#opt_uri_bl">uri-bl</a>,
-<a href="#opt_uri_a_bl">uri-a-bl</a>, and
-<a href="#opt_uri_ns_bl">uri-ns-bl</a>
+<a href="#opt_uri_a_bl">uri-a-bl</a>,
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
+<a href="#opt_uri_ns_a_bl">uri-ns-a-bl</a>
 options. Reject the command if black listed.
 </dd>
 
@@ -757,8 +760,10 @@ options. Reject the command if black listed.
 <dd>
 Policy to apply if message contains a black listed URI found by
 <a href="#opt_uri_bl">uri-bl</a>,
-<a href="#opt_uri_a_bl">uri-a-bl</a>, and
-<a href="#opt_uri_ns_bl">uri-ns-bl</a>, then apply one of the following policies:
+<a href="#opt_uri_a_bl">uri-a-bl</a>,
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
+<a href="#opt_uri_ns_a_bl">uri-ns-a-bl</a>,
+then apply one of the following policies:
 
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
@@ -801,6 +806,17 @@ A comma or semi-colon separated list of host name and/or domain name black list 
 domain name found in a URI is used to find its DNS NS records; the NS host
 names are checked against these host name and/or domain name DNS black
 lists.
+Aggregate lists are supported using <code class="param">suffix/mask</code>.
+Without a <code class="param">/mask</code>, suffix
+is the same as <code class="param">suffix/0x00FFFFFE</code>.
+</dd>
+
+<a name="opt_uri_ns_a_bl"></a>
+<dt><span class="syntax">uri-ns-a-bl=</span><span class="param"></span></dt>
+<dd>
+A comma or semi-colon separated list of IP black list suffixes to consult.
+The host or domain name found in a URI is used to find its DNS NS records
+and IP address, which are then checked against these IP black lists.
 Aggregate lists are supported using <code class="param">suffix/mask</code>.
 Without a <code class="param">/mask</code>, suffix
 is the same as <code class="param">suffix/0x00FFFFFE</code>.

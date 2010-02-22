@@ -154,7 +154,7 @@ static const char usage_uri_bl[] =
 "# is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
-static Option opt_uri_bl	= { "uri-bl",		".multi.surbl.org",	usage_uri_bl };
+static Option opt_uri_bl	= { "uri-bl",		".multi.surbl.org;.black.uribl.com",	usage_uri_bl };
 
 static const char usage_uri_bl_headers[] =
   "A list of mail headers to parse for URI and check using the uri-bl,\n"
@@ -198,6 +198,16 @@ static const char usage_uri_ns_bl[] =
 ;
 static Option opt_uri_ns_bl	= { "uri-ns-bl",	"",			usage_uri_ns_bl };
 
+static const char usage_uri_ns_a_bl[] =
+  "A comma or semi-colon separated list of IP black list suffixes to consult.\n"
+"# The host or domain name found in a URI is used to find its DNS NS records\n"
+"# and IP address, which are then checked against these IP black lists.\n"
+"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
+"# is the same as suffix/0x00FFFFFE.\n"
+"#"
+;
+static Option opt_uri_ns_a_bl	= { "uri-ns-a-bl",	"",			usage_uri_ns_a_bl };
+
 static const char usage_uri_bl_policy[] =
   "Policy to apply if message contains a black listed URI found by uri-bl,\n"
 "# uri-a-bl, uri-ns-bl. Specify one of none, tag, quarantine, reject, or\n"
@@ -221,7 +231,7 @@ static const char usage_mail_bl_headers[] =
 "# one or more mail address black lists. Specify the empty list to disable.\n"
 "#"
 ;
-Option opt_mail_bl_headers	= { "mail-bl-headers",	"From;Reply-To",	usage_mail_bl_headers };
+Option opt_mail_bl_headers	= { "mail-bl-headers",	"From;Reply-To;Sender",	usage_mail_bl_headers };
 
 static const char usage_mail_bl_max[] =
   "Maximum number of unique mail addresses to check. Specify zero for\n"
@@ -319,6 +329,7 @@ static Option *optTable[] = {
 	&opt_uri_bl_port_list,
 	&opt_uri_bl_sub_domains,
 	&opt_uri_ns_bl,
+	&opt_uri_ns_a_bl,
 	NULL
 };
 
@@ -328,6 +339,7 @@ static Option *optTable[] = {
 
 DnsList *ip_bl_list;
 DnsList *ns_bl_list;
+DnsList *ns_ip_bl_list;
 DnsList *uri_bl_list;
 DnsList *mail_bl_list;
 Vector uri_bl_headers;
@@ -498,7 +510,7 @@ testURI(workspace data, URI *uri)
 		goto error1;
 	}
 
-	if ((list_name = dnsListQueryNs(ns_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
+	if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
@@ -544,7 +556,10 @@ testList(workspace data, char *query, const char *delim)
 			}
 		}
 
-		uri = uriParse(arg, -1);
+		/* Consider current URL trend for shorter strings using
+		 * single dot domains, eg. http://twitter.com/
+		 */
+		uri = uriParse2(arg, -1, 1);
 		rc = testURI(data, uri);
 		free(uri);
 	}
@@ -1049,6 +1064,7 @@ atExitCleanUp()
 	dnsListFree(ip_bl_list);
 	dnsListFree(uri_bl_list);
 	dnsListFree(mail_bl_list);
+	dnsListFree(ns_ip_bl_list);
 	dnsListFree(ns_bl_list);
 
 	VectorDestroy(mail_bl_domains);
@@ -1118,6 +1134,7 @@ main(int argc, char **argv)
 	uriSetTimeout(opt_links_timeout.value * 1000);
 
 	ns_bl_list = dnsListCreate(opt_uri_ns_bl.string);
+	ns_ip_bl_list = dnsListCreate(opt_uri_ns_a_bl.string);
 	ip_bl_list = dnsListCreate(opt_uri_a_bl.string);
 	uri_bl_list = dnsListCreate(opt_uri_bl.string);
 	uri_bl_headers = TextSplit(opt_uri_bl_headers.string, ";, ", 0);

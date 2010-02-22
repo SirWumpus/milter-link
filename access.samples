@@ -81,6 +81,7 @@ milter-link-body:edgesuite.net			OK
 milter-link-body:ediets.com			OK
 milter-link-body:egroups.com			OK
 milter-link-body:emode.com			OK
+milter-link-body:eset.com			OK
 #milter-link-body:exacttarget.com		REJECT
 milter-link-body:excite.com			OK
 milter-link-body:exct.net			OK
