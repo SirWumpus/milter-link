@@ -1,21 +1,27 @@
 /*
  * @package_copyright@
- * 
+ *
  * @configure_input@
- * 
+ *
  * $OpenBSD$
  */
 
 /***********************************************************************
- *** 
+ ***
  ***********************************************************************/
- 
+
 #undef MILTER_NAME
 #undef MILTER_MAJOR
 #undef MILTER_MINOR
 #undef MILTER_VERSION
 #undef MILTER_AUTHOR
 #undef MILTER_COPYRIGHT
+
+#undef _PLATFORM
+#undef _CONFIGURE
+#undef _CFLAGS
+#undef _LDFLAGS
+#undef _LIBS
 
 #undef NDEBUG
 #undef RUN_AS_USER

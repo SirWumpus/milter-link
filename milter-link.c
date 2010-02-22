@@ -88,6 +88,7 @@
 #include <com/snert/lib/util/Text.h>
 #include <com/snert/lib/util/getopt.h>
 #include <com/snert/lib/util/uri.h>
+#include <com/snert/lib/sys/sysexits.h>
 
 #if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73
 # error "LibSnert/1.73 or better is required"
@@ -301,6 +302,15 @@ static const char usage_uri_bl_port_list[] =
 ;
 static Option opt_uri_bl_port_list = { "uri-bl-port-list",	"",		usage_uri_bl_port_list };
 
+Option opt_version		= { "version",			NULL,		"Show version and copyright." };
+
+static const char usage_info[] =
+  "Write the configuration and compile time options to standard output\n"
+"# and exit.\n"
+"#"
+;
+Option opt_info			= { "info", 			NULL,		usage_info };
+
 #ifdef DROPPED_ADD_HEADERS
 static Option optAddHeaders	= { "add-headers",	"-",			"Add extra informational headers when message passes." };
 #endif
@@ -312,6 +322,7 @@ static Option *optTable[] = {
 #endif
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
+	&opt_info,
 	&opt_mail_bl,
 	&opt_mail_bl_domains,
 	&opt_mail_bl_headers,
@@ -330,6 +341,7 @@ static Option *optTable[] = {
 	&opt_uri_bl_sub_domains,
 	&opt_uri_ns_bl,
 	&opt_uri_ns_a_bl,
+	&opt_version,
 	NULL
 };
 
@@ -1077,6 +1089,83 @@ atExitCleanUp()
 	smfAtExitCleanUp();
 }
 
+void
+printVersion(void)
+{
+	printf(MILTER_NAME " " MILTER_VERSION " " MILTER_COPYRIGHT "\n");
+	printf("LibSnert %s %s", LIBSNERT_VERSION, LIBSNERT_COPYRIGHT "\n");
+#ifdef _BUILT
+	printf("Built on " _BUILT "\n");
+#endif
+}
+
+#define LINE_WRAP 70
+
+void
+printVar(int columns, const char *name, const char *value)
+{
+	int length;
+	Vector list;
+	const char **args;
+
+	if (columns <= 0)
+		printf("%s=\"%s\"\n",  name, value);
+	else if ((list = TextSplit(value, " \t", 0)) != NULL && 0 < VectorLength(list)) {
+		args = (const char **) VectorBase(list);
+
+		length = printf("%s=\"'%s'", name, *args);
+		for (args++; *args != NULL; args++) {
+			/* Line wrap. */
+			if (columns <= length + strlen(*args) + 4) {
+				(void) printf("\n\t");
+				length = 8;
+			}
+			length += printf(" '%s'", *args);
+		}
+		if (columns <= length + 1) {
+			(void) printf("\n");
+		}
+		(void) printf("\"\n");
+
+		VectorDestroy(list);
+	}
+}
+
+void
+printInfo(void)
+{
+#ifdef MILTER_NAME
+	printVar(0, "_NAME", MILTER_NAME);
+#endif
+#ifdef MILTER_VERSION
+	printVar(0, "_VERSION", MILTER_VERSION);
+#endif
+#ifdef MILTER_COPYRIGHT
+	printVar(0, "_COPYRIGHT", MILTER_COPYRIGHT);
+#endif
+#ifdef _BUILT
+	printVar(0, "_BUILT", _BUILT);
+#endif
+#ifdef _CONFIGURE
+	printVar(LINE_WRAP, "_CONFIGURE", _CONFIGURE);
+#endif
+#ifdef LIBSNERT_VERSION
+	printVar(0, "LIBSNERT_VERSION", LIBSNERT_VERSION);
+#endif
+#ifdef LIBSNERT_CONFIGURE
+	printVar(LINE_WRAP, "LIBSNERT_CONFIGURE", LIBSNERT_CONFIGURE);
+#endif
+#ifdef _CFLAGS
+	printVar(LINE_WRAP, "CFLAGS", _CFLAGS);
+#endif
+#ifdef _LDFLAGS
+	printVar(LINE_WRAP, "LDFLAGS", _LDFLAGS);
+#endif
+#ifdef _LIBS
+	printVar(LINE_WRAP, "LIBS", _LIBS);
+#endif
+}
+
 int
 main(int argc, char **argv)
 {
@@ -1107,7 +1196,14 @@ main(int argc, char **argv)
 		(void) optionArrayL(argc, argv, optTable, smfOptTable, NULL);
 	}
 
-	/* Show them the funny farm. */
+	if (opt_version.string != NULL) {
+		printVersion();
+		exit(EX_USAGE);
+	}
+	if (opt_info.string != NULL) {
+		printInfo();
+		exit(EX_USAGE);
+	}
 	if (smfOptHelp.string != NULL) {
 		optionUsageL(optTable, smfOptTable, NULL);
 		exit(2);

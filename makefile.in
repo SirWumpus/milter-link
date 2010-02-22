@@ -98,7 +98,7 @@ next-id:
 
 ${MILTER}: BUILD_ID.TXT $(SNERT) ${MILTER}.c
 	$(CC) -DMILTER_BUILD=$(MILTER_BUILD) -DMILTER_BUILD_STRING='"'$(MILTER_BUILD)'"' \
-	$(CFLAGS) $(LDFLAGS) -o ${MILTER} ${MILTER}.c $(LIBS)
+	$(CFLAGS) $(LDFLAGS) -D_BUILT="\"`date +'%a, %d %b %Y %H:%M:%S %z'`\"" -o ${MILTER} ${MILTER}.c $(LIBS)
 
 start:
 	./${MILTER}

@@ -16,7 +16,9 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
-   ?	consider uri-bl-headers list option
+--1.3.0--
+
+   +	Added +version and +info command options.
 
 --1.2.0--
 
