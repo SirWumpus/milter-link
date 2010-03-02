@@ -509,6 +509,13 @@ testURI(workspace data, URI *uri)
 		goto error1;
 	}
 
+	if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
+		dnsListLog(data->work.qid, uri->host, list_name);
+		data->policy = *opt_uri_bl_policy.string;
+		goto error1;
+	}
+
 	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
@@ -518,13 +525,6 @@ testURI(workspace data, URI *uri)
 	if (are_different && (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
 		dnsListLog(data->work.qid, origin->host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
-	}
-
-	if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
-		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
