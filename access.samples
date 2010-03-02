@@ -180,10 +180,12 @@ milter-link-body:snert.com              	OK
 milter-link-body:snertsoft.com          	OK
 milter-link-body:sourceforge.net		OK
 milter-link-body:spamcop.net			OK
+milter-link-body:spamhaus.org			OK
 milter-link-body:speedera.net			OK
 milter-link-body:sportsline.com			OK
 milter-link-body:sun.com			OK
 milter-link-body:suntrust.com			OK
+milter-link-body:surbl.org			OK
 milter-link-body:symantec.com			OK
 milter-link-body:sympatico.ca			OK
 milter-link-body:t-online.de			OK
@@ -201,6 +203,7 @@ milter-link-body:tone.co.nz			OK
 milter-link-body:topica.com			OK
 milter-link-body:tux.org			OK
 milter-link-body:uol.com.br			OK
+milter-link-body:uribl.com			OK
 milter-link-body:ups.com			OK
 milter-link-body:verizon.net			OK
 milter-link-body:vistaprint.com			OK
