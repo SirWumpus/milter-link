@@ -26,6 +26,9 @@ is no set schedule for releases.
    	Alex Broens based on data set sizes and likely hood of a hit
    	vs. other lookups.
 
+   !	Added support for dbl.spamhaus.org. See libsnert pdqGetDnsList
+   	and dnsListQueryName.
+
 --1.2.0--
 
    *	Requires LibSnert 1.73.10
