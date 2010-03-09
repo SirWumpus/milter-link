@@ -192,7 +192,7 @@ static const char usage_uri_bl_sub_domains[] =
 static Option opt_uri_bl_sub_domains = { "uri-bl-sub-domains", "-",		usage_uri_bl_sub_domains };
 
 static const char usage_uri_a_bl[] =
-  "A list of IP black list suffixes to consult, like sbl-xbl.spamhaus.org.\n"
+  "A list of IP black list suffixes to consult, like zen.spamhaus.org.\n"
 "# The host or domain name found in a URI is used to find its DNS A record\n"
 "# and IP address, which is then checked against these IP DNS black lists.\n"
 "# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
