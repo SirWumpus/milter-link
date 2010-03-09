@@ -1,7 +1,7 @@
 /*
  * milter-link.c
  *
- * Copyright 2003, 2005 by Anthony Howe. All rights reserved.
+ * Copyright 2003, 2010 by Anthony Howe. All rights reserved.
  *
  * The following should be added to the sendmail.mc file:
  *
@@ -90,8 +90,8 @@
 #include <com/snert/lib/util/uri.h>
 #include <com/snert/lib/sys/sysexits.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73
-# error "LibSnert/1.73 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73 || LIBSNERT_BUILD < 16
+# error "LibSnert 1.73.16 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -111,6 +111,8 @@
  *** Global Variables
  ***********************************************************************/
 
+static smfInfo milter;
+
 typedef struct {
 	smfWork work;
 	int policy;				/* per message */
@@ -124,9 +126,9 @@ typedef struct {
 
 	PDQ *pdq;				/* per connection */
 	Mime *mime;				/* per connection, reset per message */
-	Vector ns_tested;			/* per connection */
-	Vector uri_tested;			/* per connection */
-	Vector mail_tested;			/* per connection */
+	Vector ns_tested;			/* per message */
+	Vector uri_tested;			/* per message */
+	Vector mail_tested;			/* per message */
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
@@ -147,6 +149,16 @@ static Option opt_links_policy	= { "links-policy",	"tag",			usage_links_policy }
 static Option opt_links_test	= { "links-test",	"-",			"Verify HTTP links are valid and find origin server." };
 
 static Option opt_links_timeout	= { "links-timeout",	"60",			"Socket timeout used when testing HTTP links." };
+
+
+static const char usage_domain_bl[] =
+  "A list of domain black list suffixes to consult, like .dbl.spamhaus.org.\n"
+"# The host or domain name found in a URI is checked against these DNS black\n"
+"# lists. These black lists are assumed to use wildcards entries, so only a\n"
+"# single lookup is done. IP-as-domain in a URI are ignored.\n"
+"#"
+;
+static Option opt_domain_bl	= { "domain-bl",	"",			usage_domain_bl };
 
 static const char usage_uri_bl[] =
   "A list of domain name black list suffixes to consult, like .multi.surbl.org.\n"
@@ -323,6 +335,7 @@ static Option *optTable[] = {
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
 	&opt_info,
+	&opt_domain_bl,
 	&opt_mail_bl,
 	&opt_mail_bl_domains,
 	&opt_mail_bl_headers,
@@ -349,6 +362,7 @@ static Option *optTable[] = {
  ***
  ***********************************************************************/
 
+DnsList *d_bl_list;
 DnsList *ip_bl_list;
 DnsList *ns_bl_list;
 DnsList *ns_ip_bl_list;
@@ -422,7 +436,7 @@ testURI(workspace data, URI *uri)
 	const char *error;
 	URI *origin = NULL;
 	const char *list_name = NULL;
-	int are_different, access, rc = SMFIS_REJECT;
+	int access, rc = SMFIS_REJECT;
 
 	if (uri == NULL)
 		return SMFIS_CONTINUE;
@@ -461,13 +475,12 @@ testURI(workspace data, URI *uri)
 
 	access = smfAccessClient(&data->work, MILTER_NAME "-body:", host, ip, NULL, NULL);
 	switch (access) {
-	case SMDB_ACCESS_ERROR:
-		break;
 	case SMDB_ACCESS_REJECT:
 		snprintf(data->reply, sizeof (data->reply), "rejected URL host %s", uri->host);
 		data->policy = 'r';
 		rc = SMFIS_REJECT;
 		goto error0;
+
 	case SMDB_ACCESS_OK:
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> OK", TAG_ARGS, uri->uri);
 #ifdef URL_WHITE_LISTS_MESSAGE
@@ -482,33 +495,28 @@ testURI(workspace data, URI *uri)
 		data->work.skipMessage = 1;
 #endif
 		goto ignore1;
+
+	case SMDB_ACCESS_ERROR:
+		break;
 	}
 
-	/* Test and follow redirections so verify that the link returns something valid. */
-	if (opt_links_test.value && (error = uriHttpOrigin(uri->uri, &origin)) != NULL) {
-		if (error == uriErrorNotHttp || error == uriErrorPort)
-			goto ignore0;
-
-		snprintf(data->reply, sizeof (data->reply), "broken URL \"%s\": %s", uri->uri, error);
-		data->policy = *opt_links_policy.string;
-		goto error0;
-	}
-
-	are_different = origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0;
-
-	if ((list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL) {
+	/* domain-bl */
+	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
-	if (are_different && (list_name = dnsListQuery(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
-		dnsListLog(data->work.qid, origin->host, list_name);
+
+	/* uri-bl */
+	if ((list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL) {
+		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
+		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
 
+	/* ns-bl and ns-a-bl */
 	if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
@@ -516,17 +524,46 @@ testURI(workspace data, URI *uri)
 		goto error1;
 	}
 
+	/* uri-a-bl */
 	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
 		goto error1;
 	}
-	if (are_different && (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
-		dnsListLog(data->work.qid, origin->host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
+
+	/* Test and follow redirections so verify that the link returns something valid. */
+	if (opt_links_test.value && (error = uriHttpOrigin(uri->uri, &origin)) == uriErrorLoop) {
+		snprintf(data->reply, sizeof (data->reply), "broken URL \"%s\": %s", uri->uri, error);
+		data->policy = *opt_links_policy.string;
+		goto error0;
+	}
+
+	if (origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0) {
+		if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, origin->host)) != NULL) {
+			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
+			dnsListLog(data->work.qid, origin->host, list_name);
+			data->policy = *opt_uri_bl_policy.string;
+			goto error1;
+		}
+		if ((list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL) {
+			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
+			dnsListLog(data->work.qid, origin->host, list_name);
+			data->policy = *opt_uri_bl_policy.string;
+			goto error1;
+		}
+		if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, origin->host)) != NULL) {
+			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
+			dnsListLog(data->work.qid, origin->host, list_name);
+			data->policy = *opt_uri_bl_policy.string;
+			goto error1;
+		}
+		if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
+			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
+			dnsListLog(data->work.qid, origin->host, list_name);
+			data->policy = *opt_uri_bl_policy.string;
+			goto error1;
+		}
 	}
 
 	dnsListLog(data->work.qid, uri->host, NULL);
@@ -611,6 +648,8 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	if ((data = calloc(1, sizeof *data)) == NULL)
 		goto error0;
 
+	data->work.info = &milter;
+
 	data->work.ctx = ctx;
 	data->work.qid = smfNoQueue;
 	data->work.cid = smfOpenProlog(ctx, client_name, raw_client_addr, data->client_addr, sizeof (data->client_addr));
@@ -647,16 +686,20 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	access = smfAccessHost(&data->work, MILTER_NAME "-connect:", client_name, data->client_addr, SMDB_ACCESS_OK);
 
 	switch (access) {
-#ifdef ENABLE_BLACKLIST
 	case SMDB_ACCESS_REJECT:
 		/* Report this mail error ourselves, because sendmail/milter API
 		 * fails to report xxfi_connect handler rejections.
 		 */
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "connection %s [%s] blocked", TAG_ARGS, client_name, data->client_addr);
 		return smfReply(&data->work, 550, "5.7.1", "connection %s [%s] blocked", client_name, data->client_addr);
-#endif
+
 	case SMDB_ACCESS_ERROR:
 		return SMFIS_REJECT;
+
+	case SMDB_ACCESS_OK:
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "client %s [%s] white listed", TAG_ARGS, client_name, data->client_addr);
+		data->work.skipConnection = 1;
+		return SMFIS_ACCEPT;
 	}
 
 	TextCopy(data->client_name, sizeof (data->client_name), client_name);
@@ -725,29 +768,40 @@ filterMail(SMFICTX *ctx, char **args)
 	data->work.skipMessage = data->work.skipConnection;
 	auth_authen = smfi_getsymval(ctx, smMacro_auth_authen);
 
+	/* Reset per message. */
+	VectorRemoveAll(data->mail_tested);
+	VectorRemoveAll(data->ns_tested);
+	VectorRemoveAll(data->uri_tested);
+
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterMail(%lx, %lx) MAIL='%s' auth='%s'", TAG_ARGS, (long) ctx, (long) args, args[0], TextEmpty(auth_authen));
 
 	access = smfAccessMail(&data->work, MILTER_NAME "-from:", args[0], SMDB_ACCESS_UNKNOWN);
 
 	switch (access) {
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-#ifdef ENABLE_BLACKLIST
 	case SMDB_ACCESS_REJECT:
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
-#endif
+
+	case SMDB_ACCESS_ERROR:
+		return SMFIS_REJECT;
+
+	case SMDB_ACCESS_OK:
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "sender <%s> white listed", TAG_ARGS, data->work.mail->address.string);
+		data->work.skipMessage = 1;
+		return SMFIS_ACCEPT;
 	}
 
 	access = smfAccessAuth(&data->work, MILTER_NAME "-auth:", auth_authen, args[0], NULL, NULL);
 
 	switch (access) {
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-#ifdef ENABLE_BLACKLIST
 	case SMDB_ACCESS_REJECT:
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
-#endif
+
+	case SMDB_ACCESS_ERROR:
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_OK:
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, auth_authen);
+		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 	}
 
@@ -768,15 +822,16 @@ filterRcpt(SMFICTX *ctx, char **args)
 	access = smfAccessRcpt(&data->work, MILTER_NAME "-to:", args[0]);
 
 	switch (access) {
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-#ifdef ENABLE_BLACKLIST
 	case SMDB_ACCESS_REJECT:
 		return smfReply(&data->work, 550, "5.7.1", "recipient blocked");
-#endif
+
+	case SMDB_ACCESS_ERROR:
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_OK:
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "recipient <%s> white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
-		return SMFIS_CONTINUE;
+		return SMFIS_ACCEPT;
 	}
 
 	if (testMail(data, data->work.mail->address.string) == SMFIS_REJECT)

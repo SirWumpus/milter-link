@@ -31,7 +31,6 @@
 #undef PID_FILE
 #undef SOCKET_FILE
 #undef WORK_DIR
-#undef ENABLE_BLACKLIST
 
 /***********************************************************************
  *** END

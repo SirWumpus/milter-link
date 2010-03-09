@@ -16,6 +16,31 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--1.4.0--
+
+   *	Requires LibSnert 1.73.16
+
+   +	Updated documentation concerning "combo" tag support added in
+   	libsnert.
+
+   +	Removed ENABLE_BLACKLIST macros in favour of it	always being
+	compiled in. The original argument to disable blacklisting was
+	that sendmail already had its own mechanism; however libsnert
+	milter support provides a richer syntax especially with the
+	addition of combo tags. Also it makes documentation easier.
+
+  !!	Reengineered support for dbl.spamhaus.org by introducing
+   	domain-bl option. dbl.spamhaus.org must be moved from uri-bl
+   	to domain-bl for correct lookup operation, otherwise it is
+   	possible to cause false-positives and be banned by SpamHaus.
+
+   !	Reordered tests: 1. assorted uri BL tests; 2. uri-links-policy;
+	3. if origin found, apply uri BL tests to origin.
+
+   !	Weakened uri-links-policy test to only generate a reject for a
+	redirection loop. Recommended by Papa Steve Freegard.
+
+
 --1.3.0--
 
    *	Requires LibSnert 1.73.14

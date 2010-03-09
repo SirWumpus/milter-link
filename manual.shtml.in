@@ -130,228 +130,355 @@ The access-db contains key-value pairs. Lookups are performed
 from most to least specific, stopping on the first entry found.
 Keys are case-insensitive.
 </p>
+
+
+<a name="access_lookups"></a>
 <p>
-An IPv4 lookup is repeated several times reducing the IP address
-by one octet from right to left until a match is found.
+There are essentially three types of keys used in the <a href="#opt_access_map">access-db</a>.
+Many of the tags available will use one or more of these lookup sequences.
 </p>
-<blockquote>
+
+<dl>
+<dt>IP Address Lookups</dt>
+<dd>
+An IP address lookup is typically applied to the connected SMTP client.
+It will start with a complete IPv4 or IPv6 address and break it down
+on delimiter boundaries from right to left.
+
+<p>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td>tag:192.0.2.9</td></tr>
-<tr><td>tag:192.0.2</td></tr>
-<tr><td>tag:192.0</td></tr>
-<tr><td>tag:192</td></tr>
+<tr><td rowspan="9" width="6%">&nbsp;</td><th width="47%">IPv6 Lookup</th><th width="47%">IPv4 Lookup</th></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0:0:0:0:1234:5678</td><td><span class="tag">tag:</span>192.0.2.9</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0:0:0:0:1234</td><td><span class="tag">tag:</span>192.0.2</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0:0:0:0</td><td><span class="tag">tag:</span>192.0</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0:0:0</td><td><span class="tag">tag:</span>192</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0:0</td><td rowspan="4">&nbsp;</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8:0</td></tr>
+<tr><td><span class="tag">tag:</span>2001:0DB8</td></tr>
+<tr><td><span class="tag">tag:</span>2001</td></tr>
 </table>
-</blockquote>
-<p>
-An IPv6 lookup is repeated several times reducing the IP address
-by one 16-bit word from right to left until a match is found.
 </p>
-<blockquote>
+
+<p>
+Note that the compact form of an IPv6 address, "<code>2001:0DB8::1234:5678</code>", <em>cannot</em> be used.
+Only the full IPv6 address format, with all intervening zeros, is currently supported.
+</p>
+
+</dd>
+
+<dt>Domain Name Lookups</dt>
+<dd>
+A domain lookup may be applied to either the connected SMTP client,
+where the client's host name found through a <!-- a class="glossary" href="glossary.html#term_PTR" -->DNS PTR</a> record is searched for, or
+using the domain portion of an mail address (see below). A domain lookup will try the IP-domain literal
+if applicable, then continue with the <!-- a class="glossary" href="glossary.html#term_FQDN" -->FQDN</a>, breaking it down one label
+at a time from left to right.
+
+<p>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td>tag:2001:0DB8:0:0:0:0:1234:5678</td></tr>
-<tr><td>tag:2001:0DB8:0:0:0:0:1234</td></tr>
-<tr><td>tag:2001:0DB8:0:0:0:0</td></tr>
-<tr><td>tag:2001:0DB8:0:0:0</td></tr>
-<tr><td>tag:2001:0DB8:0:0</td></tr>
-<tr><td>tag:2001:0DB8:0:0</td></tr>
-<tr><td>tag:2001:0DB8:0</td></tr>
-<tr><td>tag:2001:0DB8</td></tr>
-<tr><td>tag:2001</td></tr>
+<tr><td rowspan="6" width="6%">&nbsp;</td><td><span class="tag">tag:</span>[ipv6:2001:0DB8::1234:5678]</td></tr>
+<tr><td><span class="tag">tag:</span>[192.0.2.9]</td></tr>
+<tr><td><span class="tag">tag:</span>sub.domain.tld</td></tr>
+<tr><td><span class="tag">tag:</span>domain.tld</td></tr>
+<tr><td><span class="tag">tag:</span>tld</td></tr>
+<tr><td><span class="tag">tag:</span></td></tr>
 </table>
-</blockquote>
-<p>
-
- A domain lookup is repeated several times reducing the domain by
- one label from left to right until a match is found.
-
 </p>
-<blockquote>
+
+<p>
+Note that the bare tag is often used to specify system wide defaults.
+</p>
+</dd>
+
+<dt>Mail Address Lookups</dt>
+<dd>
+A mail address lookup is similar to a domain lookup, but the search
+first starts with a complete mail address, before trying the address's
+domain, and finally only the local part of the address.
+
+<p>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td>tag:[ipv6:2001:0DB8::1234:5678]</td></tr>
-<tr><td>tag:[192.0.2.9]</td></tr>
-<tr><td>tag:sub.domain.tld</td></tr>
-<tr><td>tag:domain.tld</td></tr>
-<tr><td>tag:tld</td></tr>
-<tr><td>tag:</td></tr>
+<tr><td rowspan="6" width="6%">&nbsp;</td><td><span class="tag">tag:</span>account@sub.domain.tld</td></tr>
+<tr><td><span class="tag">tag:</span>sub.domain.tld</td></tr>
+<tr><td><span class="tag">tag:</span>domain.tld</td></tr>
+<tr><td><span class="tag">tag:</span>tld</td></tr>
+<tr><td><span class="tag">tag:</span>account@</td></tr>
+<tr><td><span class="tag">tag:</span></td></tr>
 </table>
-</blockquote>
-<p>
-
- An email lookup is similar to a domain lookup, the exact address
- is first tried, then the address's domain, and finally the local
- part of the address.
-
-</p>
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td>tag:account@sub.domain.tld</td></tr>
-<tr><td>tag:sub.domain.tld</td></tr>
-<tr><td>tag:domain.tld</td></tr>
-<tr><td>tag:tld</td></tr>
-<tr><td>tag:account@</td></tr>
-<tr><td>tag:</td></tr>
-</table>
-</blockquote>
-<p>
-
- If a key is found and is a milter specific tag (ie. @PACKAGE_NAME@-Connect, @PACKAGE_NAME@-From, @PACKAGE_NAME@-Auth, @PACKAGE_NAME@-To), then the value is processed as a pattern list
- and the result returned. The Sendmail variants cannot have a pattern list.
- A pattern list is a whitespace separated
- list of <i class="syntax">pattern-action</i> pairs followed by an optional default
- <i class="syntax">action</i>. The supported patterns are:
-
-</p>
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td class="syntax tline" width="50%">[network/cidr]action</td><td class="tline">Classless Inter-Domain Routing</td></tr>
-<tr><td class="syntax">!pattern!action</td><td>Simple fast text matching.</td></tr>
-<tr><td class="syntax bline">/regex/action</td><td class="bline">POSIX Extended Regular Expressions</td></tr>
-</table>
-</blockquote>
-<p>
-
- The CIDR will only ever match for IP address related lookups.
-</p>
-<p>
-
- A <span class="syntax">!pattern!</span> uses an astrisk (*) for a wildcard, scanning over
- zero or more characters; a question-mark (?) matches any single
- character; a backslash followed by any character treats it as a
- literal (it loses any special meaning).
-
-</p>
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr valign="top"><td class="syntax tline" width="50%">!abc!</td><td class="tline">exact match for 'abc'</td></tr>
-<tr valign="top"><td class="syntax">!abc*!</td><td>match 'abc' at start of string</td></tr>
-<tr valign="top"><td class="syntax">!*abc!</td><td>match 'abc' at the end of string</td></tr>
-<tr valign="top"><td class="syntax">!abc*def!</td><td>match 'abc' at the start and match 'def' at the end, maybe with stuff in between.</td></tr>
-<tr valign="top"><td class="syntax bline">!*abc*def*!</td><td class="bline">find 'abc', then find 'def'</td></tr>
-</table>
-</blockquote>
-<p>
-
- For black-white lookups, the following actions are recognised:
- OK or RELAY (white list), REJECT or ERROR (black list), DISCARD (accept &amp; discard),
- SKIP or DUNNO (stop lookup, no result), and NEXT (opposite of
- SKIP, resume lookup). Its possible to specify an empty action
- after a pattern, which is treated like SKIP returning an undefined
- result. Other options may specify other actions.
 </p>
 
 <p>
-Below is a list of supported tags. Other options may specify additional tags.
+Note that the bare tag is often used to specify system wide defaults.
+</p>
+</dd>
+</dl>
+
+<a name="access_tags"></a>
+<h4>Tags</h4>
+<p>
+The following list outlines the available tags and their supported key lookups:
 </p>
 
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr class="syntax"><td width="50%" class="bline">&nbsp;</td><td width="50%" class="bline">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Connect:<i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>Connect:<i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>client-ip</i>&nbsp;&nbsp;</td><td><i>value</i></td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Connect:[<i>client-ip</i>]&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Connect:<i>client-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Connect:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>Connect:[<i>client-ip</i>] </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>Connect:<i>client-domain</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>[<i>client-ip</i>] </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>client-domain</i> </td><td><i>value</i></td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-All mail sent by a connecting <i>client-ip</i>, unresolved <i>client-ip</i> address or IP addresses that resolve to a
-<i>client-domain</i> are black or white-listed.
+<dl>
 
-These allows you to white-list your network for mail sent internally
-and off-site, or connections from outside networks.
-<span class="note">Note that Sendmail also has special semantics for Connect: and untagged forms.</span>
-	</td>
-</tr>
+<a name="tag_auth"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Auth:</span>auth_authen</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Auth:</span></dt>
+<dd>
+Used to black or white list by authenticated user (SMTP AUTH) as given
+by the macro <code>{auth_authen}</code>.
 
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender-address</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-From:<i>sender@</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-From:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>From:<i>sender-address</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>From:<i>sender-domain</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>From:<i>sender@</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>sender-address</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>sender-domain</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>sender@</i> </td><td><i>value</i></td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-All mail from the <i>sender-address</i>, <i>sender-domain</i>, or that begins with <i>sender</i>
-is black or white-listed.
-In the case of a +detailed email address, the left hand side of the +detail is used for the <i>sender@</i> lookup.
-<span class="note">Note that Sendmail also has special semantics for From: and untagged forms.</span>
-	</td>
-</tr>
+The string searched by the pattern list will be the sender's mail address.
+The empty form of <span class="tag">@PACKAGE_NAME@-Auth:</span> allows for a
+milter specific default only when <code>{auth_authen}</code> is defined.
+</dd>
 
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Auth:<i>auth_authen</i></td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Auth:</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-All mail from the authenticated sender, as given by sendmail's {<i class="syntax">auth_authen</i>} macro,
-is black or white-listed.
-The string searched by the pattern list will be the <code><i class="syntax">sender-address</i></code>.
-The empty form of @PACKAGE_NAME@-Auth: allows for a milter specific default
-only when {<i class="syntax">auth_authen</i>} is defined.
+<a name="tag_body"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>ip</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>domain</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>mail</dt>
+<dd>
+Used to black (REJECT) or ignore (OK) domains that make up
+mail addresses or URIs found within the header or body content
+of a message.
 
-	</td>
-</tr>
-
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient-address</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-To:<i>recipient@</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-To:&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr class="syntax"><td>Spam:<i>recipient-address</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
-<tr class="syntax"><td>Spam:<i>recipient-domain</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
-<tr class="syntax"><td>Spam:<i>recipient@</i> </td><td><i>value</i>&nbsp;&nbsp;&nbsp;* (FRIEND or HATER are recognised)</td></tr>
-<tr class="syntax"><td>To:<i>recipient-address</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>To:<i>recipient-domain</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td>To:<i>recipient@</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>recipient-address</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>recipient-domain</i> </td><td><i>value</i></td></tr>
-<tr class="syntax"><td><i>recipient@</i> </td><td><i>value</i></td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-All mail to the <i>recipient-address</i>, <i>recipient-domain</i>, or that begins with <i>recipient</i>
-is black or white-listed.
-In the case of a +detailed
-email address, the left hand side of the +detail is used for the <i>recipient@</i> lookup.
-<span class="note">Note that Sendmail also has special semantics for Spam:, To:, and untagged forms.</span>
-	</td>
-</tr>
-
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-<tr class="syntax"><td>@PACKAGE_NAME@-Body:<i>url-domain</i>&nbsp;&nbsp;</td><td><i>value</i>&nbsp;&nbsp;&nbsp;&sect; Can be a pattern list.</td></tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-The <i>url-domain</i> found in the message body content is black or white listed.
-This can be used to white list URL domains that are know to be good and so avoid redundant
+This can be used to white list domains that are know to be good and so avoid redundant
 lookups. Consider listing your own web site that might appear in your signatures, common and
-popular sites like hotmail.com or yahoo.com, etc. If black listed, the message will be rejected
-when found in the message body.
-	</td>
-</tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
+popular sites like <tt>hotmail.com</tt> or <tt>yahoo.com</tt>, etc.
+If black listed, the message will be rejected when found in the message body.
+
+See
+<a href="#opt_domain_bl">domain-bl</a>,
+<a href="#opt_uri_bl">uri-bl</a>,
+<a href="#opt_uri_a_bl">uri-a-bl</a>,
+<a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
+<a href="#opt_uri_ns_a_bl">uri-ns-a-bl</a>
+options.
+</dd>
+
+<a name="tag_connect_from"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>ip<span class="tag">:From:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>domain<span class="tag">:From:</span>mail</dt>
+<dd>
+This set of combination tags are used to black or white list sender
+addresses when sent from a given SMTP client. The
+sender address can be easily forged and using the <span class="tag">From:</span>
+tag by itself could allow spam with a forged address. By adding the
+sender's SMTP client as an extra constraint, it is possible to limit
+such abuse.
+<span class="note">
+Note that the lookup variants with blank IP, domain, or mail are not supported.
+</span>
+</dd>
+
+<a name="tag_connect"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>ip</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>domain</dt>
+<dt><span class="tag">Connect:</span>ip</dt>
+<dt><span class="tag">Connect:</span>domain</dt>
+<dd>
+Used to black or white list an SMTP client.
+<span class="note">Note that Sendmail also has special semantics for <span class="tag">Connect:</span>.</span>
+</dd>
+
+<a name="tag_connect_to"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>ip<span class="tag">:To:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Connect:</span>domain<span class="tag">:To:</span>mail</dt>
+<dd>
+This set of combination tags are used to black or white list recipient
+addresses that a given SMTP client may contact. This allows for
+finer granularity of control in place of the <span class="tag">To:</span> tag.
+<span class="note">
+Note that the lookup variants with blank IP, domain, or mail are not supported.
+</span>
+</dd>
+
+<a name="tag_from_to"></a>
+<dt><span class="tag">@PACKAGE_NAME@-From:</span>mail<span class="tag">:To:</span>mail</dt>
+<dd>
+This set of combination tags are used to black or white list a pair of sender
+and recipient addresses. This allows for finer granularity of control in place
+of the <span class="tag">To:</span> tag.
+<span class="note">
+Note that the lookup variants with blank mail elements are not supported.
+</span>
+</dd>
+
+<a name="tag_from"></a>
+<dt><span class="tag">@PACKAGE_NAME@-From:</span>mail</dt>
+<dt><span class="tag">From:</span>mail</dt>
+<dd>
+Used to black or white list a sender's mail address. Black listing using
+this tag is fine, but white listing is <em>not</em> recommended as it is too easy
+for someone to fake the sender address or domain.
+
+In the case of a +detailed mail address, the left hand side of the +detail is used for the <i>sender@</i> lookup.
+
+<span class="note">Note that Sendmail also has special semantics for <span class="tag">From:</span>.</span>
+</dd>
+
+<a name="tag_to"></a>
+<dt><span class="tag">@PACKAGE_NAME@-To:</span>mail</dt>
+<dt><span class="tag">Spam:</span>mail</dt>
+<dt><span class="tag">To:</span>mail</dt>
+<dd>
+Used to black or white list a recipient's mail address.
+In the case of a +detailed mail address, the left hand side of the +detail is used for the <i>sender@</i> lookup.
+<span class="note">Note that Sendmail also has special semantics for <span class="tag">To:</span> and <span class="tag">Spam:</span>.</span>
+
+</dd>
+</dl>
+
+<a name="access_simple_value"></a>
+<h4>Action</h4>
+<p>
+When a key lookup matches, then the value returned is a pattern list, which in
+its simplest and most common form is either an action word like
+<code>OK</code>, <code>REJECT</code>, etc.;
+a numerical value; or some arbitrary string depending on the tag involved. For example:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr valign="top"><td width="41%" class="key bdotted tline">Connect:192.168.0</td><td width="59%" class="value bdotted tline">OK</td></tr>
+<tr valign="top"><td width="41%" class="key bdotted">Rate-Connect:fsl.com</td><td width="59%" class="value bdotted">17</td></tr>
+<tr valign="top"><td width="41%" class="key bline">Msg-Limit-From:hotmail.com</td><td width="59%" class="value bline">150/30m</td></tr>
+</table>
+</blockquote>
+
+<a name="access_action_words"></a>
+<p>
+The action words supported by @PACKAGE_NAME@ are:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr valign="top"><td width="41%" class="value bdotted tline">OK</td><td width="59%" class="bdotted tline">White list, by-pass one or more tests.</td></tr>
+<tr valign="top"><td width="41%" class="value bdotted">REJECT</td><td width="59%" class="bdotted">Black list, reject connection, sender, recipient, etc.</td></tr>
+<tr valign="top"><td width="41%" class="value bdotted">SKIP</td><td width="59%" class="bdotted">Stop lookup and return no result ie. continue testing.</td></tr>
+<tr valign="top"><td width="41%" class="value bline">DUNNO</td><td width="59%" class="bline">Same as SKIP, commonly used by postfix.</td></tr>
+</table>
+</blockquote>
+
+
+<a name="access_pattern_lists"></a>
+<h4>Pattern Lists</h4>
+<p>
+In most instances, the above forms of key lookup and values are sufficient. However,
+there may be times when finer granularity of control is required, in which case
+pattern lists can be used.
+
+A pattern list is a white space separated list of <i class="syntax">pattern-action</i>
+pairs followed by an optional default action. The supported types are:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="2" width="100%">
+<tr valign="top"><td class="value bdotted tline" width="41%">[network/cidr]action</td><td class="bdotted tline">Classless Inter-Domain Routing<br/>(only with IP address lookups)</td></tr>
+<tr valign="top"><td class="value bdotted">!pattern!action</td><td class="bdotted">Simple fast text matching. <br/></td></tr>
+<tr valign="top"><td class="value bline">/regex/action</td><td class="bline">POSIX Extended Regular Expressions.</td></tr>
+</table>
+</blockquote>
+
+<a name="access_simple_pattern"></a>
+<p>
+The simple pattern matching, <span class="value">!pattern!</span>,
+uses an asterisk (*) for a wildcard, scanning over  zero or more characters;
+a question-mark (?) matches any single character; a backslash followed by
+any character treats that character as a literal. This method always
+tries to match the beginning and end of string. For example:
+</p>
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="0" width="100%">
+<tr valign="top"><td class="value bdotted tline" width="41%">!abc!</td><td class="bdotted tline">exact match for 'abc'</td></tr>
+<tr valign="top"><td class="value bdotted">!abc*!</td><td class="bdotted">match 'abc' at start of string</td></tr>
+<tr valign="top"><td class="value bdotted">!*abc!</td><td class="bdotted">match 'abc' at the end of string</td></tr>
+<tr valign="top"><td class="value bdotted">!abc*def!</td><td class="bdotted">match 'abc' at the start and match 'def' at the end, maybe with stuff in between.</td></tr>
+<tr valign="top"><td class="value bline">!*abc*def*!</td><td class="bline">find 'abc', then find 'def'</td></tr>
 </table>
 </blockquote>
 
 <p>
-The @PACKAGE_NAME@-Connect:, @PACKAGE_NAME@-From:, and @PACKAGE_NAME@-To: tags provide a milter specific means to
-override the Sendmail variants. For example, you normally white list your local network through any and all milters, but
+The following is an example using a simple pattern to reject client connections
+that originate from a range of IP addresses of an ISP assigned to ADSL customers.
+Using a pattern like this allows you to drop connects from the ISP's ADSL, while still
+accepting connections from mail and web servers.
+</p>
+
+<blockquote><pre>
+Connect:hananet.net	!adsl-*-*.usr.hananet.net!REJECT
+</pre></blockquote>
+
+<p>
+If you know that an ISP's mail and web servers follow a standard naming convention,
+you might prefer to only accept mail from those instead. We include web servers here
+to handle the case where a web server might have to send a mail response based on
+a form being filled in.
+</p>
+
+<blockquote><pre>
+Connect:hananet.net	!smtp*.hananet.net!OK !www*.hananet.net!OK REJECT
+</pre></blockquote>
+
+<a name="access_about_spf"></a>
+<p>
+Note that <a class="glossary" href="http://tools.ietf.org/html/rfc4408" target="_blank">SPF</a>
+was designed to help mail servers identify
+originators of mail, so creating patterns as shown in the above two examples
+is not normally required. However, SPF is still considered experimental and not
+as widely deployed as one might hope.
+</p>
+
+<a name="access_regex_pattern"></a>
+<p>
+The next example, <span class="value">/regex/</span>, uses Extended Regular Expressions to validate the
+format of the local-part of an AOL address, which must be between 3 and 16
+characters long, can contain dots and RFC 2822 ``atext'' characters except <code>%</code> and <code>/</code>.
+The SKIP word allows the one regular expression to validate the format of the address and continue if the
+pattern matches; otherwise if the regular expression failed to match, REJECT the suspect aol.com address.
+</p>
+
+<blockquote style="font-family: monospace;">
+From:grandma@aol.com OK
+<br/>From:aol.com /^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/SKIP REJECT
+</blockquote>
+
+<p>
+The discussion of Extended Regular Expressions is vast and complex, well beyond the
+scope of this document. There are many on-line tutorials and references available and the book
+<a href="http://www.oreilly.com/catalog/regex3/index.html">Mastering Regular Expressions, 3e</a> from O'Reilly covers the topic in depth.
+</p>
+
+<p>
+If you need to use a pattern list, then try and follow these suggestions:
+</p>
+<ul>
+<li>
+A pattern cannot be used as the key in an <a href="#opt_access_db">access-db</a>
+lookup. Key-value tables work with constants for the keys using a predefined lookup order
+as outlined <a href="#access_lookups">above</a>.
+</li>
+<li>Use the key lookup as a selector to find a pattern list.</li>
+<li>Use simple <a href="#access_simple_pattern">!pattern!</a> matching where possible, as it will be
+faster than Extended Regular Expressions, <a href="#access_regex_pattern">/regex/</a>.
+</li>
+<li>
+Avoid using pattern lists with bare tag variants that specify a global default.
+It will more often than not cause a lot of unnecessary attempts to match a pattern.
+</li>
+<li>
+Keep your pattern lists short &amp; simple.
+</li>
+</ul>
+
+<p>
+The <span class="tag">@PACKAGE_NAME@-Connect:</span>, <span class="tag">@PACKAGE_NAME@-From:</span>, and
+<span class="tag">@PACKAGE_NAME@-To:</span> tags provide a milter specific means to override
+the Sendmail and Postfix variants. For example, you normally white list your local network through any and all milters, but
 on the odd occasion you might want to actually scan mail from inside going out, without removing the Connect: tag that
-allows Sendmail to relay for your network or white listing for other milters. So for example if you have Sendmail tags
-like:
+allows Sendmail or Postfix to relay for your network or white listing for other milters.
+So for example if you have tags like:
 </p>
 
 <blockquote>
@@ -427,53 +554,13 @@ Some additional examples:
 <tr class="normal">
 	<td colspan="2">
 		Reject mail to example.net using a plus-detail address or to any user who's last name is "smith" or addresses
-		starting with a digit. No default given, so B/W processing would continue.
+		starting with a digit. No default given, so it is assumed to be SKIP..
 	</td>
 </tr>
 <tr><td colspan="2" class="bline">&nbsp;</td></tr>
 </table>
 </blockquote>
 
-<p>
-Normally when the access.db lookup
-matches a milter tag, then the <i>value</i> pattern list is
-processed and there are no further access.db lookups.
-
-The NEXT action allows the access.db lookups to resume and is
-effectively the opposite of SKIP.
-
-Consider the following examples:
-</p>
-<blockquote>
-<table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr class="syntax" valign="top">
-	<td width="40%" class="tline">@PACKAGE_NAME@-From:com<br/>From:com</td>
-	<td width="60%" class="tline" style="text-align: right;">/@com/REJECT&nbsp;&nbsp;NEXT<br/>OK</td>
-</tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-		Reject mail from places like compaq.com or com.com if
-		the pattern matches, but resume the access.db lookups
-		otherwise.
-	</td>
-</tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-<tr class="syntax" valign="top">
-	<td width="40%">@PACKAGE_NAME@-From:aol.com&nbsp;&nbsp;<br/>From:fred@aol.com&nbsp;&nbsp;</td>
-	<td width="60%" style="text-align: right;">/^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/NEXT&nbsp;&nbsp;REJECT<br/>OK</td>
-</tr>
-<tr><td colspan="2">&nbsp;</td></tr>
-<tr class="normal">
-	<td colspan="2">
-		AOL local parts are between 3 and 16 characters long and can contain dots and RFC 2822 atext characters except % and /.
-		The NEXT used above allows one simple regex to validate the format of the address
-		and proceed to lookup white listed and/or black listed addresses.
-	</td>
-</tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
-</table>
-</blockquote>
 </dd>
 
 <!-- end MODIFIED B/W listing options + milter-link-body: tag. -->
@@ -481,6 +568,15 @@ Consider the following examples:
 <a name="opt_daemon"></a>
 <dt><span class="syntax">+daemon</span></dt>
 <dd>Start as a background daemon or foreground application.
+</dd>
+
+<a name="opt_domain_bl"></a>
+<dt><span class="syntax">domain-bl=</span><span class="param">.dbl.spamhaus.org</span></dt>
+<dd>
+A list of domain black list suffixes to consult, like .dbl.spamhaus.org.
+The host or domain name found in a URI is checked against these DNS black
+lists. These black lists are assumed to use wildcards entries, so only a
+single lookup is done. IP-as-domain in a URI are ignored.
 </dd>
 
 <a name="opt_file"></a>
@@ -494,21 +590,6 @@ To disable the use of an option file, simply say <span class="syntax">file=''</s
 <dd>Write the option summary to standard output and exit.
 The output is suitable for use as an option file.
 Note that this option may list additional undocumented options.
-</dd>
-
-<a name="opt_milter_socket"></a>
-<dt><span class="syntax">milter-socket=</span><span class="param">unix:@snert_socket_file@</span></dt>
-<dd>A socket specifier used to communicate between Sendmail and <code>@PACKAGE_NAME@</code>.
-Typically a unix named socket or a host:port. This value must match the value specified for
-the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
-
-<blockquote>
-<dl>
-<dt><code>{unix|local}:/path/to/file</code></dt><dd>A named pipe. (default)</dd>
-<dt><code>inet:port@{hostname|ip-address}</code></dt><dd>An IPV4 socket.</dd>
-<dt><code>inet6:port@{hostname|ip-address}</code></dt><dd>An IPV6 socket.</dd>
-</dl>
-</blockquote>
 </dd>
 
 <a name="opt_mail_bl"></a>
@@ -598,6 +679,21 @@ mail-bl, then apply one of the following policies:
 	<td class="bline">Discard the message.</td>
 </tr>
 </table>
+</blockquote>
+</dd>
+
+<a name="opt_milter_socket"></a>
+<dt><span class="syntax">milter-socket=</span><span class="param">unix:@snert_socket_file@</span></dt>
+<dd>A socket specifier used to communicate between Sendmail and <code>@PACKAGE_NAME@</code>.
+Typically a unix named socket or a host:port. This value must match the value specified for
+the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
+
+<blockquote>
+<dl>
+<dt><code>{unix|local}:/path/to/file</code></dt><dd>A named pipe. (default)</dd>
+<dt><code>inet:port@{hostname|ip-address}</code></dt><dd>An IPV4 socket.</dd>
+<dt><code>inet6:port@{hostname|ip-address}</code></dt><dd>An IPV6 socket.</dd>
+</dl>
 </blockquote>
 </dd>
 
@@ -736,6 +832,7 @@ is the same as <code class="param">suffix/0x00FFFFFE</code>.
 <dt><span class="syntax">uri-bl-headers=</span><span class="param">X-Originating-IP</span></dt>
 <dd>
 A list of mail headers to parse for URI and check using the
+<a href="#opt_domain_bl">domain-bl</a>,
 <a href="#opt_uri_bl">uri-bl</a>,
 <a href="#opt_uri_a_bl">uri-a-bl</a>,
 <a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
@@ -748,6 +845,7 @@ Specify the empty list to disable.
 <dt><span class="syntax">-uri-bl-helo</span></dt>
 <dd>
 Test the HELO/EHLO argument using the
+<a href="#opt_domain_bl">domain-bl</a>,
 <a href="#opt_uri_bl">uri-bl</a>,
 <a href="#opt_uri_a_bl">uri-a-bl</a>,
 <a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
@@ -759,6 +857,7 @@ options. Reject the command if black listed.
 <dt><span class="syntax">uri-bl-policy=</span><span class="param">reject</span></dt>
 <dd>
 Policy to apply if message contains a black listed URI found by
+<a href="#opt_domain_bl">domain-bl</a>,
 <a href="#opt_uri_bl">uri-bl</a>,
 <a href="#opt_uri_a_bl">uri-a-bl</a>,
 <a href="#opt_uri_ns_bl">uri-ns-bl</a>, and

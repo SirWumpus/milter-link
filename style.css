@@ -1,7 +1,7 @@
 /*
  * Copyright 2002, 2006 by Anthony Howe. All rights reserved.
  *
- * $OpenBSD$ 
+ * $OpenBSD$
  */
 
 /*
@@ -15,7 +15,7 @@ table {
 
 .normal, body, p, ul, td {
 	font-family: Arial, Verdana, Helvetica, sans-serif;
-	font-size: 11pt;	
+	font-size: 11pt;
 /*
 	color: #ffffff;
 	background-color: #4B748A;
@@ -90,6 +90,43 @@ a:hover {
 	font-size: 11pt;
 }
 
+DT {
+	font-family: monospace;
+	font-weight: bold;
+}
+DT.normal {
+	font-family: Arial, Verdana, Helvetica, sans-serif;
+	font-weight: normal;
+}
+DD {
+	text-align: justify;
+	margin: 0 0 20px 40px;
+}
+DT TT {
+	text-align: left;
+}
+.key {
+	font-weight: bold;
+	font-family: monospace;
+}
+.value {
+	color:#000000;
+	font-style: normal;
+	font-weight: bold;
+	text-align: left;
+}
+TD.value, DT.value {
+	color:#000000;
+	font-style: normal;
+	font-weight: bold;
+	text-align: left;
+}
+.tag {
+	color:#008000;
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 11pt;
+}
 .warn {
 	color:#cc0000;
 	font-style: italic;
@@ -118,4 +155,24 @@ a:hover {
 	border-collapse: collapse;
 	border-right: 1px solid;
 	border-color: #999999;
+}
+.tdotted {
+	border-collapse: collapse;
+	border-top: 1px dotted;
+	border-color: #cccccc;
+}
+.bdotted {
+	border-collapse: collapse;
+	border-bottom: 1px dotted;
+	border-color: #cccccc;
+}
+.ldotted {
+	border-collapse: collapse;
+	border-left: 1px dotted;
+	border-color: #cccccc;
+}
+.rdotted {
+	border-collapse: collapse;
+	border-right: 1px dotted;
+	border-color: #cccccc;
 }
