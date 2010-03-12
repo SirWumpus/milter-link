@@ -85,13 +85,14 @@
 #include <com/snert/lib/mail/tlds.h>
 #include <com/snert/lib/mail/smdb.h>
 #include <com/snert/lib/net/dnsList.h>
+#include <com/snert/lib/net/network.h>
 #include <com/snert/lib/util/Text.h>
 #include <com/snert/lib/util/getopt.h>
 #include <com/snert/lib/util/uri.h>
 #include <com/snert/lib/sys/sysexits.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73 || LIBSNERT_BUILD < 16
-# error "LibSnert 1.73.16 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73 || LIBSNERT_BUILD < 17
+# error "LibSnert 1.73.17 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -121,14 +122,12 @@ typedef struct {
 	int hasSubject;				/* per message */
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
 	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
-	char client_name[SMTP_DOMAIN_LENGTH+1];	/* per connection */
-	char client_addr[IPV6_TAG_LENGTH+IPV6_STRING_LENGTH];	/* per connection */
 
 	PDQ *pdq;				/* per connection */
 	Mime *mime;				/* per connection, reset per message */
-	Vector ns_tested;			/* per message */
-	Vector uri_tested;			/* per message */
-	Vector mail_tested;			/* per message */
+	Vector ns_tested;			/* per connection */
+	Vector uri_tested;			/* per connection */
+	Vector mail_tested;			/* per connection */
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
@@ -359,6 +358,112 @@ static Option *optTable[] = {
 };
 
 /***********************************************************************
+ *** Stats
+ ***********************************************************************/
+
+typedef struct {
+	const char *name;
+	unsigned long count;
+} Stat;
+
+static pthread_mutex_t stat_mutex;
+
+#define STAT_DECLARE(name)	\
+static const char stat_name_##name[] = #name; \
+static Stat stat_##name = { stat_name_##name }
+
+#define STAT_POINTER(name)	&stat_##name
+
+STAT_DECLARE(start_time);
+STAT_DECLARE(run_time);
+STAT_DECLARE(connect_active);
+STAT_DECLARE(connect_total);
+STAT_DECLARE(connect_error);
+STAT_DECLARE(transactions);
+STAT_DECLARE(access_bl);
+STAT_DECLARE(access_wl);
+STAT_DECLARE(access_other);
+STAT_DECLARE(link_fail);
+STAT_DECLARE(mail_fail);
+STAT_DECLARE(origin_fail);
+STAT_DECLARE(uri_fail);
+STAT_DECLARE(tag);
+STAT_DECLARE(reject);
+STAT_DECLARE(discard);
+STAT_DECLARE(quarantine);
+
+#define SMF_MAX_MULTILINE_REPLY		32
+
+static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
+	&stat_start_time,
+	&stat_run_time,
+	&stat_connect_active,
+	&stat_connect_total,
+	&stat_connect_error,
+	&stat_transactions,
+	&stat_tag,
+	&stat_reject,
+	&stat_discard,
+	&stat_quarantine,
+	&stat_access_bl,
+	&stat_access_wl,
+	&stat_access_other,
+	&stat_link_fail,
+	&stat_mail_fail,
+	&stat_origin_fail,
+	&stat_uri_fail,
+	NULL
+};
+
+void
+statInit(void)
+{
+	(void) pthread_mutex_init(&stat_mutex, NULL);
+	(void) time((time_t *) &stat_start_time.count);
+}
+
+void
+statFini(void)
+{
+	(void) pthreadMutexDestroy(&stat_mutex);
+}
+
+void
+statGet(Stat *stat, Stat *out)
+{
+	if (!pthread_mutex_lock(&stat_mutex)) {
+		*out = *stat;
+		(void) pthread_mutex_unlock(&stat_mutex);
+	} else {
+		(void) memset(out, 0, sizeof (*out));
+	}
+}
+
+void
+statSetValue(Stat *stat, unsigned long value)
+{
+	if (!pthread_mutex_lock(&stat_mutex)) {
+		stat->count = value;
+		(void) pthread_mutex_unlock(&stat_mutex);
+	}
+}
+
+void
+statAddValue(Stat *stat, long value)
+{
+	if (!pthread_mutex_lock(&stat_mutex)) {
+		stat->count += value;
+		(void) pthread_mutex_unlock(&stat_mutex);
+	}
+}
+
+void
+statCount(Stat *stat)
+{
+	statAddValue(stat, 1);
+}
+
+/***********************************************************************
  ***
  ***********************************************************************/
 
@@ -388,6 +493,7 @@ testMail(workspace data, const char *mail)
 		dnsListLog(data->work.qid, mail, list_name);
 		data->policy = *opt_mail_bl_policy.string;
 		rc = data->policy == 'r' ? SMFIS_REJECT : SMFIS_CONTINUE;
+		statCount(&stat_mail_fail);
 	}
 
 	smfLog(SMF_LOG_DEBUG, TAG_FORMAT "testMail(%lx, \"%s\") rc=%d policy=%x reply='%s'", TAG_ARGS, (long) data, mail, rc, data->policy, data->reply);
@@ -432,13 +538,13 @@ static sfsistat
 testURI(workspace data, URI *uri)
 {
 	long i;
-	char *host, *ip;
 	const char *error;
 	URI *origin = NULL;
+	char *host, *ip, *copy;
 	const char *list_name = NULL;
 	int access, rc = SMFIS_REJECT;
 
-	if (uri == NULL)
+	if (uri == NULL || uri->host == NULL)
 		return SMFIS_CONTINUE;
 
 	if (ports != NULL) {
@@ -452,16 +558,13 @@ testURI(workspace data, URI *uri)
 			return SMFIS_CONTINUE;
 	}
 
-	if (uri->host == NULL)
-		goto ignore0;
-
 	/* Session cache for previously PASSED hosts/domains. */
 	for (i = 0; i < VectorLength(data->uri_tested); i++) {
 		if ((host = VectorGet(data->uri_tested, i)) == NULL)
 			continue;
 
 		if (TextInsensitiveCompare(uri->host, host) == 0)
-			goto ignore0;
+			return SMFIS_CONTINUE;
 	}
 
 	/* Be sure to apply the correct access lookup. */
@@ -475,101 +578,59 @@ testURI(workspace data, URI *uri)
 
 	access = smfAccessClient(&data->work, MILTER_NAME "-body:", host, ip, NULL, NULL);
 	switch (access) {
+	case SMDB_ACCESS_OK:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> OK", TAG_ARGS, uri->uri);
+		return SMFIS_CONTINUE;
+
 	case SMDB_ACCESS_REJECT:
 		snprintf(data->reply, sizeof (data->reply), "rejected URL host %s", uri->host);
 		data->policy = 'r';
 		rc = SMFIS_REJECT;
 		goto error0;
-
-	case SMDB_ACCESS_OK:
-		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> OK", TAG_ARGS, uri->uri);
-#ifdef URL_WHITE_LISTS_MESSAGE
-/* Only ignore the URL for a white list entry rather than white
- * list the whole message. Consider text/html messages that often
- * contain a DOCTYPE line with a URL to http://www.w3c.org. If
- * you white list w3c.org, you really just want to ignore/skip the
- * DNS BL lookup, because otherwise it would be too simple for
- * spammers to find typical white listed domains and include them
- * to by-pass filters.
- */
-		data->work.skipMessage = 1;
-#endif
-		goto ignore1;
-
-	case SMDB_ACCESS_ERROR:
-		break;
 	}
 
-	/* domain-bl */
-	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL) {
+	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL
+	||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL
+	||  (list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL
+	||  (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
 		dnsListLog(data->work.qid, uri->host, list_name);
 		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
+		statCount(&stat_uri_fail);
+		goto error0;
 	}
 
-	/* uri-bl */
-	if ((list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
-		dnsListLog(data->work.qid, uri->host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
-	}
+	if (VectorAdd(data->uri_tested, copy = strdup(uri->host)))
+		free(copy);
 
-	/* ns-bl and ns-a-bl */
-	if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
-		dnsListLog(data->work.qid, uri->host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
-	}
-
-	/* uri-a-bl */
-	if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, uri->host)) != NULL) {
-		snprintf(data->reply, sizeof (data->reply), black_listed_url_format, uri->host, list_name);
-		dnsListLog(data->work.qid, uri->host, list_name);
-		data->policy = *opt_uri_bl_policy.string;
-		goto error1;
-	}
+	dnsListLog(data->work.qid, uri->host, NULL);
 
 	/* Test and follow redirections so verify that the link returns something valid. */
 	if (opt_links_test.value && (error = uriHttpOrigin(uri->uri, &origin)) == uriErrorLoop) {
 		snprintf(data->reply, sizeof (data->reply), "broken URL \"%s\": %s", uri->uri, error);
 		data->policy = *opt_links_policy.string;
+		statCount(&stat_link_fail);
 		goto error0;
 	}
 
 	if (origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0) {
-		if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, origin->host)) != NULL) {
+		if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, origin->host)) != NULL
+		||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL
+		||  (list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, origin->host)) != NULL
+		||  (list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
 			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
 			dnsListLog(data->work.qid, origin->host, list_name);
 			data->policy = *opt_uri_bl_policy.string;
+			statCount(&stat_origin_fail);
 			goto error1;
 		}
-		if ((list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
-			dnsListLog(data->work.qid, origin->host, list_name);
-			data->policy = *opt_uri_bl_policy.string;
-			goto error1;
-		}
-		if ((list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, origin->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
-			dnsListLog(data->work.qid, origin->host, list_name);
-			data->policy = *opt_uri_bl_policy.string;
-			goto error1;
-		}
-		if ((list_name = dnsListQueryIP(ip_bl_list, data->pdq, NULL, origin->host)) != NULL) {
-			snprintf(data->reply, sizeof (data->reply), black_listed_url_format, origin->host, list_name);
-			dnsListLog(data->work.qid, origin->host, list_name);
-			data->policy = *opt_uri_bl_policy.string;
-			goto error1;
-		}
+
+		if (VectorAdd(data->uri_tested, copy = strdup(origin->host)))
+			free(copy);
+
+		dnsListLog(data->work.qid, origin->host, NULL);
 	}
 
-	dnsListLog(data->work.qid, uri->host, NULL);
-ignore1:
-	(void) VectorAdd(data->uri_tested, strdup(uri->host));
-ignore0:
 	rc = SMFIS_CONTINUE;
 error1:
 	free(origin);
@@ -631,6 +692,8 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	int access;
 	workspace data;
 
+	statCount(&stat_connect_total);
+
 	if (raw_client_addr == NULL) {
 		smfLog(SMF_LOG_TRACE, "filterOpen() got NULL socket address, accepting connection");
 		goto error0;
@@ -648,13 +711,10 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	if ((data = calloc(1, sizeof *data)) == NULL)
 		goto error0;
 
+	smfProlog(&data->work, ctx, client_name, raw_client_addr);
 	data->work.info = &milter;
 
-	data->work.ctx = ctx;
-	data->work.qid = smfNoQueue;
-	data->work.cid = smfOpenProlog(ctx, client_name, raw_client_addr, data->client_addr, sizeof (data->client_addr));
-
-	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterOpen(%lx, '%s', [%s])", TAG_ARGS, (long) ctx, client_name, data->client_addr);
+	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterOpen(%lx, '%s', [%s])", TAG_ARGS, (long) ctx, data->work.client_name, data->work.client_addr);
 
 	if ((data->pdq = pdqOpen()) == NULL)
 		goto error1;
@@ -683,26 +743,34 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		goto error6;
 	}
 
-	access = smfAccessHost(&data->work, MILTER_NAME "-connect:", client_name, data->client_addr, SMDB_ACCESS_OK);
+	access = smfAccessHost(&data->work, MILTER_NAME "-connect:", client_name, data->work.client_addr, SMDB_ACCESS_OK);
 
 	switch (access) {
 	case SMDB_ACCESS_REJECT:
 		/* Report this mail error ourselves, because sendmail/milter API
 		 * fails to report xxfi_connect handler rejections.
 		 */
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "connection %s [%s] blocked", TAG_ARGS, client_name, data->client_addr);
-		return smfReply(&data->work, 550, "5.7.1", "connection %s [%s] blocked", client_name, data->client_addr);
+		statCount(&stat_access_bl);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "connection %s [%s] blocked", TAG_ARGS, client_name, data->work.client_addr);
+		return smfReply(&data->work, 550, "5.7.1", "connection %s [%s] blocked", client_name, data->work.client_addr);
 
 	case SMDB_ACCESS_ERROR:
+		statCount(&stat_access_other);
 		return SMFIS_REJECT;
 
 	case SMDB_ACCESS_OK:
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "client %s [%s] white listed", TAG_ARGS, client_name, data->client_addr);
+		statCount(&stat_access_wl);
+		statAddValue(&stat_connect_active, 1);
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "client %s [%s] white listed", TAG_ARGS, client_name, data->work.client_addr);
 		data->work.skipConnection = 1;
-		return SMFIS_ACCEPT;
+
+		/* Don't use SMFIS_ACCEPT, otherwise we can't do STAT
+		 * from localhost.
+		 */
+		return SMFIS_CONTINUE;
 	}
 
-	TextCopy(data->client_name, sizeof (data->client_name), client_name);
+	statAddValue(&stat_connect_active, 1);
 
 	return SMFIS_CONTINUE;
 error6:
@@ -718,6 +786,8 @@ error2:
 error1:
 	free(data);
 error0:
+	statCount(&stat_connect_error);
+
 	return SMFIS_ACCEPT;
 }
 
@@ -768,41 +838,56 @@ filterMail(SMFICTX *ctx, char **args)
 	data->work.skipMessage = data->work.skipConnection;
 	auth_authen = smfi_getsymval(ctx, smMacro_auth_authen);
 
-	/* Reset per message. */
-	VectorRemoveAll(data->mail_tested);
-	VectorRemoveAll(data->ns_tested);
-	VectorRemoveAll(data->uri_tested);
-
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterMail(%lx, %lx) MAIL='%s' auth='%s'", TAG_ARGS, (long) ctx, (long) args, args[0], TextEmpty(auth_authen));
 
 	access = smfAccessMail(&data->work, MILTER_NAME "-from:", args[0], SMDB_ACCESS_UNKNOWN);
 
 	switch (access) {
 	case SMDB_ACCESS_REJECT:
+		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
 
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-
 	case SMDB_ACCESS_OK:
+		statCount(&stat_access_wl);
 		smfLog(SMF_LOG_TRACE, TAG_FORMAT "sender <%s> white listed", TAG_ARGS, data->work.mail->address.string);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
+
+	/* smfAccessMail failure cases. */
+	case SMDB_ACCESS_TEMPFAIL:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender <%s> temp.failed", TAG_ARGS, data->work.mail->address.string);
+		statCount(&stat_access_other);
+		return SMFIS_TEMPFAIL;
+
+	case SMDB_ACCESS_ERROR:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender <%s> unknown error", TAG_ARGS, data->work.mail->address.string);
+		statCount(&stat_access_other);
+		return SMFIS_REJECT;
 	}
 
 	access = smfAccessAuth(&data->work, MILTER_NAME "-auth:", auth_authen, args[0], NULL, NULL);
 
 	switch (access) {
 	case SMDB_ACCESS_REJECT:
+		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
 
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-
 	case SMDB_ACCESS_OK:
+		statCount(&stat_access_wl);
 		smfLog(SMF_LOG_TRACE, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, auth_authen);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
+
+	/* smfAccessAuth failure cases. */
+	case SMDB_ACCESS_TEMPFAIL:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> temp.failed", TAG_ARGS, auth_authen);
+		statCount(&stat_access_other);
+		return SMFIS_TEMPFAIL;
+
+	case SMDB_ACCESS_ERROR:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> unknown error", TAG_ARGS, auth_authen);
+		statCount(&stat_access_other);
+		return SMFIS_REJECT;
 	}
 
 	return SMFIS_CONTINUE;
@@ -823,15 +908,25 @@ filterRcpt(SMFICTX *ctx, char **args)
 
 	switch (access) {
 	case SMDB_ACCESS_REJECT:
+		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "recipient blocked");
 
-	case SMDB_ACCESS_ERROR:
-		return SMFIS_REJECT;
-
 	case SMDB_ACCESS_OK:
+		statCount(&stat_access_wl);
 		smfLog(SMF_LOG_TRACE, TAG_FORMAT "recipient <%s> white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
+
+	/* smfAccessRcpt failure cases. */
+	case SMDB_ACCESS_TEMPFAIL:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient <%s> temp.failed", TAG_ARGS, args[0]);
+		statCount(&stat_access_other);
+		return SMFIS_TEMPFAIL;
+
+	case SMDB_ACCESS_ERROR:
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient <%s> unknown error", TAG_ARGS, args[0]);
+		statCount(&stat_access_other);
+		return SMFIS_REJECT;
 	}
 
 	if (testMail(data, data->work.mail->address.string) == SMFIS_REJECT)
@@ -953,7 +1048,7 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 					rc = testList(data, uri->path, "/");
 			}
 
-			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == 25) {
+			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == SMTP_PORT) {
 				rc = testMail(data, uri->uriDecoded);
 			}
 
@@ -970,6 +1065,8 @@ static sfsistat
 filterEndMessage(SMFICTX *ctx)
 {
 	workspace data;
+
+	statCount(&stat_transactions);
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
 		return smfNullWorkspaceError("filterEndMessage");
@@ -1009,19 +1106,24 @@ filterEndMessage(SMFICTX *ctx)
 
 		switch (data->policy) {
 		case 'd':
+			statCount(&stat_discard);
 			return SMFIS_DISCARD;
 		case 'r':
+			statCount(&stat_reject);
 			return smfReply(&data->work, 550, NULL, "%s", data->reply);
 #ifdef HAVE_SMFI_QUARANTINE
 		case 'q':
-			if (smfi_quarantine(ctx, data->reply) == MI_SUCCESS)
+			if (smfi_quarantine(ctx, data->reply) == MI_SUCCESS) {
+				statCount(&stat_quarantine);
 				return SMFIS_CONTINUE;
+			}
 			/*@fallthrough@*/
 #endif
 		case 't':
 			if (TextInsensitiveStartsWith(data->subject, opt_subject_tag.string) < 0) {
 				(void) snprintf(data->line, sizeof (data->line), "%s %s", opt_subject_tag.string, data->subject);
 				(void) smfHeaderSet(ctx, "Subject", data->line, 1, data->hasSubject);
+				statCount(&stat_tag);
 			}
 			break;
 		}
@@ -1073,9 +1175,75 @@ filterClose(SMFICTX *ctx)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterClose(%lx)", cid, smfNoQueue, (long) ctx);
 
+	statAddValue(&stat_connect_active, -1);
+
 	return SMFIS_CONTINUE;
 }
 
+static sfsistat
+filterUnknown(SMFICTX * ctx, const char *command)
+{
+	Stat **stat;
+	Vector words;
+	workspace data;
+	char stamp[40];
+	struct tm local;
+	unsigned long age, d, h, m, s;
+	size_t buffer_length, line_length;
+	char buffer[2048], *lines[SMF_MAX_MULTILINE_REPLY], **line;
+
+	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
+		return smfNullWorkspaceError("filterUnknown");
+
+	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterUnknown(%lx, '%s')", TAG_ARGS, (long) ctx, command);
+
+	/* Only localhost can query the status for security. */
+	if (!isReservedIP(data->work.client_addr, IS_IP_LOOPBACK|IS_IP_LOCALHOST))
+		return SMFIS_REJECT;
+
+	if ((words = TextSplit(command, " \t", 0)) == NULL)
+		goto error0;
+	if (VectorLength(words) != 2)
+		goto error1;
+	if (TextInsensitiveCompare("STAT", VectorGet(words, 0)) != 0)
+		goto error1;
+	if (TextInsensitiveCompare(MILTER_NAME, VectorGet(words, 1)) != 0)
+		goto error1;
+
+	line = lines;
+	buffer_length = 0;
+
+	(void) localtime_r((time_t *) &stat_start_time.count, &local);
+	(void) strftime(stamp, sizeof (stamp), "%a, %d %b %Y %H:%M:%S %z", &local);
+	line_length = snprintf(buffer+buffer_length, sizeof (buffer)-buffer_length, "%s=%s", stat_start_time.name, stamp);
+	*line++ = buffer + buffer_length;
+	buffer_length += line_length+1;
+
+	age = s = (unsigned long) (time(NULL) - (time_t) stat_start_time.count);
+	d = s / 86400;
+	s -= d * 86400;
+	h = s / 3600;
+	s -= h * 3600;
+	m = s / 60;
+	s -= m * 60;
+
+	line_length = snprintf(buffer+buffer_length, sizeof (buffer)-buffer_length, "%s=%lu (%.2lu %.2lu:%.2lu:%.2lu)", stat_run_time.name, age, d, h, m, s);
+	*line++ = buffer + buffer_length;
+	buffer_length += line_length+1;
+
+	for (stat = stat_table+2; *stat != NULL; stat++) {
+		line_length = snprintf(buffer+buffer_length, sizeof (buffer)-buffer_length, "%s=%lu", (*stat)->name, (*stat)->count);
+		*line++ = buffer + buffer_length;
+		buffer_length += line_length+1;
+	}
+	*line = NULL;
+
+	(void) smfMultiLineReplyA(&data->work, 411, "4.0.0", lines);
+error1:
+	VectorDestroy(words);
+error0:
+	return SMFIS_TEMPFAIL;
+}
 
 /***********************************************************************
  ***  Milter Definition Block
@@ -1112,7 +1280,7 @@ static smfInfo milter = {
 		NULL,			/* message aborted */
 		filterClose		/* connection cleanup */
 #if SMFI_VERSION > 2
-		, NULL			/* Unknown/unimplemented commands */
+		, filterUnknown		/* Unknown/unimplemented commands */
 #endif
 #if SMFI_VERSION > 3
 		, NULL			/* SMTP DATA command */
@@ -1133,6 +1301,7 @@ atExitCleanUp()
 	dnsListFree(mail_bl_list);
 	dnsListFree(ns_ip_bl_list);
 	dnsListFree(ns_bl_list);
+	dnsListFree(d_bl_list);
 
 	VectorDestroy(mail_bl_domains);
 	VectorDestroy(mail_bl_headers);
@@ -1142,6 +1311,7 @@ atExitCleanUp()
 
 	smdbClose(smdbAccess);
 	smfAtExitCleanUp();
+	statFini();
 }
 
 void
@@ -1284,6 +1454,7 @@ main(int argc, char **argv)
 
 	uriSetTimeout(opt_links_timeout.value * 1000);
 
+	d_bl_list = dnsListCreate(opt_domain_bl.string);
 	ns_bl_list = dnsListCreate(opt_uri_ns_bl.string);
 	ns_ip_bl_list = dnsListCreate(opt_uri_ns_a_bl.string);
 	ip_bl_list = dnsListCreate(opt_uri_a_bl.string);
@@ -1383,6 +1554,8 @@ main(int argc, char **argv)
 		fprintf(stderr, "pdqInit() failed\n");
 		return 1;
 	}
+
+	statInit();
 
 	return smfMainStart(&milter);
 }
