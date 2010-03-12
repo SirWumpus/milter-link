@@ -16,6 +16,31 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--1.5.0--
+
+   *	Requires LibSnert 1.73.17
+
+   +	Add special SMTP command "STAT milter-link" that reports some
+   	basic process data. Can only be used from localhost for
+   	security concerns. Appears to work only with sendmail and not
+   	postfix.
+
+   !	testURI: Remove duplicate code.
+
+   !	When the origin host passes BL checks, add to uri_tested list.
+
+   !	Do not reset mail_tested, ns_tested, nor uri_tested each
+	message. These are lists of hosts/domains that passed the BL
+	checks, so the results can be preserved for the SMTP session.
+
+  !!	Yutz bug: Added domain-bl support but forgot to actually pre-
+  	process the list into an internal form for the dnsListQueryName
+	function call. Call me Homer DOH!
+
+   !	Fix Postfix issues concerning {client_name} and {client_addr}
+   	always coming back NULL. Use smfProlog to save the client name
+   	and address supplied to filterOpen in the workspace.
+
 --1.4.0--
 
    *	Requires LibSnert 1.73.16

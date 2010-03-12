@@ -809,7 +809,7 @@ the text/plain part empty. This option will detect and apply the policy given by
 <a name="opt_uri_a_bl"></a>
 <dt><span class="syntax">uri-a-bl=</span><span class="param"></span></dt>
 <dd>
-A comma or semi-colon separated list of IP black list suffixes to consult, like <code>.sbl-xbl.spamhaus.org</code>
+A comma or semi-colon separated list of IP black list suffixes to consult, like <code>.zen.spamhaus.org</code>
 The host or domain name found in a URI is used to find its DNS A record
 and IP address, which is then checked against these IP DNS black lists.
 Aggregate lists are supported using <code class="param">suffix/mask</code>.
