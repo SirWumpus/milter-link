@@ -555,6 +555,7 @@ AC_DEFUN(SNERT_PLATFORM,[
 	fi
 
 	AC_DEFINE_UNQUOTED(${snert_macro_prefix}_PLATFORM, [["${platform}"]])
+	AC_DEFINE_UNQUOTED(${snert_macro_prefix}_BUILD_HOST, [["`hostname`"]])
 
 dnl	case $platform in
 dnl	Linux*)
@@ -1283,6 +1284,18 @@ AC_DEFUN(SNERT_SYSTEMV_SEMAPHORES,[
 	AC_CHECK_HEADERS([sys/ipc.h sys/sem.h],[],[snert_systemv_semaphores='no'],[
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
+#endif
+	])
+
+	AC_CHECK_TYPES([union semun],[],[],[
+#ifdef HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_IPC_H
+# include <sys/ipc.h>
+#endif
+#ifdef HAVE_SYS_SEM_H
+# include <sys/sem.h>
 #endif
 	])
 

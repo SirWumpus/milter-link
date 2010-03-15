@@ -1360,19 +1360,19 @@ void
 printInfo(void)
 {
 #ifdef MILTER_NAME
-	printVar(0, "_NAME", MILTER_NAME);
+	printVar(0, "MILTER_NAME", MILTER_NAME);
 #endif
 #ifdef MILTER_VERSION
-	printVar(0, "_VERSION", MILTER_VERSION);
+	printVar(0, "MILTER_VERSION", MILTER_VERSION);
 #endif
 #ifdef MILTER_COPYRIGHT
-	printVar(0, "_COPYRIGHT", MILTER_COPYRIGHT);
+	printVar(0, "MILTER_COPYRIGHT", MILTER_COPYRIGHT);
+#endif
+#ifdef MILTER_CONFIGURE
+	printVar(LINE_WRAP, "MILTER_CONFIGURE", MILTER_CONFIGURE);
 #endif
 #ifdef _BUILT
-	printVar(0, "_BUILT", _BUILT);
-#endif
-#ifdef _CONFIGURE
-	printVar(LINE_WRAP, "_CONFIGURE", _CONFIGURE);
+	printVar(0, "MILTER_BUILT", _BUILT);
 #endif
 #ifdef LIBSNERT_VERSION
 	printVar(0, "LIBSNERT_VERSION", LIBSNERT_VERSION);
@@ -1380,14 +1380,20 @@ printInfo(void)
 #ifdef LIBSNERT_CONFIGURE
 	printVar(LINE_WRAP, "LIBSNERT_CONFIGURE", LIBSNERT_CONFIGURE);
 #endif
-#ifdef _CFLAGS
-	printVar(LINE_WRAP, "CFLAGS", _CFLAGS);
+#ifdef LIBSNERT_BUILD_HOST
+	printVar(LINE_WRAP, "LIBSNERT_BUILD_HOST", LIBSNERT_BUILD_HOST);
 #endif
-#ifdef _LDFLAGS
-	printVar(LINE_WRAP, "LDFLAGS", _LDFLAGS);
+#ifdef SQLITE_VERSION
+	printVar(0, "SQLITE3_VERSION", SQLITE_VERSION);
 #endif
-#ifdef _LIBS
-	printVar(LINE_WRAP, "LIBS", _LIBS);
+#ifdef MILTER_CFLAGS
+	printVar(LINE_WRAP, "CFLAGS", MILTER_CFLAGS);
+#endif
+#ifdef MILTER_LDFLAGS
+	printVar(LINE_WRAP, "LDFLAGS", MILTER_LDFLAGS);
+#endif
+#ifdef MILTER_LIBS
+	printVar(LINE_WRAP, "LIBS", MILTER_LIBS);
 #endif
 }
 

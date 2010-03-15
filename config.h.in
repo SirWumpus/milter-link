@@ -16,12 +16,11 @@
 #undef MILTER_VERSION
 #undef MILTER_AUTHOR
 #undef MILTER_COPYRIGHT
-
-#undef _PLATFORM
-#undef _CONFIGURE
-#undef _CFLAGS
-#undef _LDFLAGS
-#undef _LIBS
+#undef MILTER_PLATFORM
+#undef MILTER_CONFIGURE
+#undef MILTER_CFLAGS
+#undef MILTER_LDFLAGS
+#undef MILTER_LIBS
 
 #undef NDEBUG
 #undef RUN_AS_USER
