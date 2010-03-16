@@ -849,18 +849,18 @@ filterMail(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "sender <%s> white listed", TAG_ARGS, data->work.mail->address.string);
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "sender %s white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
 	/* smfAccessMail failure cases. */
 	case SMDB_ACCESS_TEMPFAIL:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender <%s> temp.failed", TAG_ARGS, data->work.mail->address.string);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s temp.failed", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
 		return SMFIS_TEMPFAIL;
 
 	case SMDB_ACCESS_ERROR:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender <%s> unknown error", TAG_ARGS, data->work.mail->address.string);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s unknown error", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
 		return SMFIS_REJECT;
 	}
@@ -913,18 +913,18 @@ filterRcpt(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "recipient <%s> white listed", TAG_ARGS, args[0]);
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "recipient %s white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
 	/* smfAccessRcpt failure cases. */
 	case SMDB_ACCESS_TEMPFAIL:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient <%s> temp.failed", TAG_ARGS, args[0]);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s temp.failed", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
 		return SMFIS_TEMPFAIL;
 
 	case SMDB_ACCESS_ERROR:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient <%s> unknown error", TAG_ARGS, args[0]);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s unknown error", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
 		return SMFIS_REJECT;
 	}
@@ -1377,11 +1377,11 @@ printInfo(void)
 #ifdef LIBSNERT_VERSION
 	printVar(0, "LIBSNERT_VERSION", LIBSNERT_VERSION);
 #endif
-#ifdef LIBSNERT_CONFIGURE
-	printVar(LINE_WRAP, "LIBSNERT_CONFIGURE", LIBSNERT_CONFIGURE);
-#endif
 #ifdef LIBSNERT_BUILD_HOST
 	printVar(LINE_WRAP, "LIBSNERT_BUILD_HOST", LIBSNERT_BUILD_HOST);
+#endif
+#ifdef LIBSNERT_CONFIGURE
+	printVar(LINE_WRAP, "LIBSNERT_CONFIGURE", LIBSNERT_CONFIGURE);
 #endif
 #ifdef SQLITE_VERSION
 	printVar(0, "SQLITE3_VERSION", SQLITE_VERSION);
