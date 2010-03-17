@@ -579,6 +579,34 @@ lists. These black lists are assumed to use wildcards entries, so only a
 single lookup is done. IP-as-domain in a URI are ignored.
 </dd>
 
+<a name="opt_dns_list_log_file"></a>
+<dt><span class="syntax">dns-list-log-file=</span><span class="param"></span></dt>
+<dd>
+File name used to log DNS list lookup results separate from syslog.
+Intended for debugging only.
+</dd>
+
+
+<a name="opt_dns_list_log_what"></a>
+<dt><span class="syntax">dns-list-log-what=</span><span class="param"></span></dt>
+<dd>
+What DNS list lookup results to log. 1 for successful lookups, 2 for
+unsuccessful lookups, 3 for both.
+</dd>
+
+<a name="opt_dns_max_timeout"></a>
+<dt><span class="syntax">dns-max-timeout=</span><span class="param">45</span></dt>
+<dd>
+Maximum timeout in seconds for a DNS query.
+</dd>
+
+<a name="opt_dns_round_robin"></a>
+<dt>-<span class="syntax">dns-round-robin</span><span class="param"></span></dt>
+<dd>
+Set true to query NS servers in round robin order. Set false to
+query all the NS servers in parallel.
+</dd>
+
 <a name="opt_file"></a>
 <dt><span class="syntax">file=</span><span class="param">/etc/mail/@PACKAGE_NAME@.cf</span></dt>
 <dd>Read the option file before command line options. This option is set by default.
@@ -586,10 +614,17 @@ To disable the use of an option file, simply say <span class="syntax">file=''</s
 </dd>
 
 <a name="opt_help"></a>
-<dt><span class="syntax">-help</span> or <span class="syntax">+help</span></dt>
+<dt>&plusmn;<span class="syntax">help</span></dt>
 <dd>Write the option summary to standard output and exit.
 The output is suitable for use as an option file.
 Note that this option may list additional undocumented options.
+</dd>
+
+<a name="opt_info"></a>
+<dt>&plusmn;<span class="syntax">info</span></dt>
+<dd>
+Write the configuration and compile time options to standard output
+and exit.
 </dd>
 
 <a name="opt_mail_bl"></a>
@@ -996,6 +1031,11 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 <dt><span class="syntax">work-dir=</span><span class="param">/var/tmp</span></dt>
 <dd>The working directory of the process. Normally serves no purpose unless the
 kernel option that permits daemon process core dumps is set.
+</dd>
+
+<a name="opt_version"></a>
+<dt>&plusmn;<span class="syntax">version</span></dt>
+Show version and copyright.
 </dd>
 
 </dl>

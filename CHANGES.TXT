@@ -16,6 +16,17 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+
+--1.5.1--
+
+   !	Add more +info details.
+
+   !	Fixed a seg. fault in filterMail that comes about when a sender
+	address fails to parse; the syslog call referred to the wrong
+	variable when attempting to log the sender.
+
+   !	Updated the documentation.
+
 --1.5.0--
 
    *	Requires LibSnert 1.73.17
