@@ -390,7 +390,9 @@ STAT_DECLARE(uri_fail);
 STAT_DECLARE(tag);
 STAT_DECLARE(reject);
 STAT_DECLARE(discard);
+#ifdef HAVE_SMFI_QUARANTINE
 STAT_DECLARE(quarantine);
+#endif
 
 #define SMF_MAX_MULTILINE_REPLY		32
 
@@ -404,7 +406,9 @@ static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
 	&stat_tag,
 	&stat_reject,
 	&stat_discard,
+#ifdef HAVE_SMFI_QUARANTINE
 	&stat_quarantine,
+#endif
 	&stat_access_bl,
 	&stat_access_wl,
 	&stat_access_other,
@@ -1437,7 +1441,7 @@ main(int argc, char **argv)
 	}
 	if (smfOptHelp.string != NULL) {
 		optionUsageL(optTable, smfOptTable, NULL);
-		exit(2);
+		exit(EX_USAGE);
 	}
 
 	if (smfOptQuit.string != NULL) {
@@ -1521,11 +1525,11 @@ main(int argc, char **argv)
 	openlog(MILTER_NAME, LOG_PID, LOG_MAIL);
 
 	if (smfOptDaemon.value && smfStartBackgroundProcess())
-		return 1;
+		return EX_SOFTWARE;
 
 	if (atexit(atExitCleanUp)) {
 		syslog(LOG_ERR, "atexit() failed\n");
-		return 1;
+		return EX_SOFTWARE;
 	}
 
 	if (*smfOptAccessDb.string != '\0') {
@@ -1534,7 +1538,7 @@ main(int argc, char **argv)
 
 		if ((smdbAccess = smdbOpen(smfOptAccessDb.string, 1)) == NULL) {
 			syslog(LOG_ERR, "failed to open \"%s\"", smfOptAccessDb.string);
-			return 1;
+			return EX_NOINPUT;
 		}
 	}
 
@@ -1550,7 +1554,7 @@ main(int argc, char **argv)
 
 	if (socketInit()) {
 		syslog(LOG_ERR, "socketInit() error\n");
-		return 1;
+		return EX_SOFTWARE;
 	}
 
 	DNS_LIST_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DNS) == SMF_LOG_DNS);
