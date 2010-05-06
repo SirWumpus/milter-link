@@ -91,8 +91,8 @@
 #include <com/snert/lib/util/uri.h>
 #include <com/snert/lib/sys/sysexits.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 73 || LIBSNERT_BUILD < 17
-# error "LibSnert 1.73.17 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 74
+# error "LibSnert 1.74.2 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -1187,6 +1187,7 @@ filterClose(SMFICTX *ctx)
 static sfsistat
 filterUnknown(SMFICTX * ctx, const char *command)
 {
+	sfsistat rc;
 	Stat **stat;
 	Vector words;
 	workspace data;
@@ -1195,6 +1196,8 @@ filterUnknown(SMFICTX * ctx, const char *command)
 	unsigned long age, d, h, m, s;
 	size_t buffer_length, line_length;
 	char buffer[2048], *lines[SMF_MAX_MULTILINE_REPLY], **line;
+
+	rc = SMFIS_CONTINUE;
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
 		return smfNullWorkspaceError("filterUnknown");
@@ -1243,10 +1246,11 @@ filterUnknown(SMFICTX * ctx, const char *command)
 	*line = NULL;
 
 	(void) smfMultiLineReplyA(&data->work, 411, "4.0.0", lines);
+	rc = SMFIS_TEMPFAIL;
 error1:
 	VectorDestroy(words);
 error0:
-	return SMFIS_TEMPFAIL;
+	return rc;
 }
 
 /***********************************************************************

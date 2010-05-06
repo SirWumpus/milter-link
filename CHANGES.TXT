@@ -17,6 +17,15 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.5.2--
+
+   *	Requires LibSnert 1.74.2
+
+   !	Fixed libsnert version test to allow for newer versions.
+
+   !	Fix bug with filterUnknown command tempfailing unknown commands
+	intended for other SnertSoft milters.
+
 --1.5.1--
 
    !	Add more +info details.
