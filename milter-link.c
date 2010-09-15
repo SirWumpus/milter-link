@@ -120,13 +120,14 @@ typedef struct {
 	int hasPass;				/* per message */
 	int hasReport;				/* per message */
 	int hasSubject;				/* per message */
+	int stop_uri_scanning;			/* per message */
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
 	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 
 	PDQ *pdq;				/* per connection */
 	Mime *mime;				/* per connection, reset per message */
-	Vector ns_tested;			/* per connection */
-	Vector uri_tested;			/* per connection */
+	Vector ns_tested;			/* per connection, reset per message */
+	Vector uri_tested;			/* per connection, reset per message */
 	Vector mail_tested;			/* per connection */
 	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 } *workspace;
@@ -497,8 +498,16 @@ testMail(workspace data, const char *mail)
 
 	rc = SMFIS_CONTINUE;
 
-	if (data->policy == '\0' && VectorLength(data->mail_tested) < opt_mail_bl_max.value
-	&& (list_name = dnsListQueryMail(mail_bl_list, data->pdq, mail_bl_domains, data->mail_tested, mail)) != NULL) {
+	if (data->policy != '\0')
+		return SMFIS_CONTINUE;
+
+	if (0 < opt_mail_bl_max.value
+	&& opt_mail_bl_max.value <= VectorLength(data->mail_tested)) {
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "mail-bl-max reached", TAG_ARGS);
+		return SMFIS_CONTINUE;
+	}
+
+	if ((list_name = dnsListQueryMail(mail_bl_list, data->pdq, mail_bl_domains, data->mail_tested, mail)) != NULL) {
 		snprintf(data->reply, sizeof (data->reply), black_listed_mail_format, mail, list_name);
 		dnsListLog(data->work.qid, mail, list_name);
 		data->policy = *opt_mail_bl_policy.string;
@@ -569,8 +578,9 @@ testURI(workspace data, URI *uri)
 	}
 
 	if (0 < opt_uri_max_test.value
-	&& VectorLength(data->uri_tested) < opt_uri_max_test.value) {
+	&& opt_uri_max_test.value <= VectorLength(data->uri_tested)) {
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "uri-max-test reached", TAG_ARGS);
+		data->stop_uri_scanning = 1;
 		return SMFIS_CONTINUE;
 	}
 
@@ -605,6 +615,9 @@ testURI(workspace data, URI *uri)
 		goto error0;
 	}
 
+	if (VectorAdd(data->uri_tested, copy = strdup(uri->host)))
+		free(copy);
+
 	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL
 	||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL
 	||  (list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL
@@ -615,9 +628,6 @@ testURI(workspace data, URI *uri)
 		statCount(&stat_uri_fail);
 		goto error0;
 	}
-
-	if (VectorAdd(data->uri_tested, copy = strdup(uri->host)))
-		free(copy);
 
 	dnsListLog(data->work.qid, uri->host, NULL);
 
@@ -850,6 +860,10 @@ filterMail(SMFICTX *ctx, char **args)
 	data->reply[0] = '\0';
 	data->subject[0] = '\0';
 
+	data->stop_uri_scanning = 0;
+	VectorRemoveAll(data->ns_tested);
+	VectorRemoveAll(data->uri_tested);
+
 	mimeReset(data->mime);
 	data->work.skipMessage = data->work.skipConnection;
 	auth_authen = smfi_getsymval(ctx, smMacro_auth_authen);
@@ -1045,7 +1059,7 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 	}
 
 	/* Do we already have a response? */
-	if (data->reply[0] != '\0')
+	if (data->reply[0] != '\0' || data->stop_uri_scanning)
 		return SMFIS_CONTINUE;
 
 	for (stop = chunk + size; chunk < stop; chunk++) {
@@ -1093,7 +1107,7 @@ filterEndMessage(SMFICTX *ctx)
 		return SMFIS_CONTINUE;
 
 	/* Terminate MIME parsing. */
-	if (mimeNextCh(data->mime, EOF) == 0) {
+	if (!data->stop_uri_scanning && mimeNextCh(data->mime, EOF) == 0) {
 		URI *uri;
 		sfsistat rc;
 

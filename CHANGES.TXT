@@ -17,7 +17,20 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
---1.5.3--
+--1.5.4--
+
+  !!	Fixed incorrect inequality concerning uri-max-tested.
+
+   !	As an optimisation, when uri-max-tested is reached stop parsing
+   	for additional URI in the message body. Requested by Alex Broens.
+
+   !	testURI: Moved addition of seen URI from after DNS list to just
+   	before.
+
+   !	The "seen" URI and NS lists are now reset with each message.
+	Note that "seen" MAIL list is NOT reset until end of session.
+
+--1.5.3-- (private release)
 
    *	Requires LibSnert 1.74.11
 
