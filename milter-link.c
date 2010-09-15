@@ -182,6 +182,11 @@ static const char usage_uri_bl_helo[] =
 ;
 static Option opt_uri_bl_helo	= { "uri-bl-helo",	"-",			usage_uri_bl_helo };
 
+static const char usage_uri_max_test[] =
+  "Maximum number of unique URI to check. Specify zero for unlimited."
+;
+Option opt_uri_max_test		= { "uri-max-test",	"0",			usage_uri_max_test };
+
 static const char usage_uri_bl_sub_domains[] =
   "When querying against name based black lists, like .multi.surbl.org\n"
 "# or .black.uribl.com, first test the registered domain, then any \n"
@@ -351,6 +356,7 @@ static Option *optTable[] = {
 	&opt_uri_bl_policy,
 	&opt_uri_bl_port_list,
 	&opt_uri_bl_sub_domains,
+	&opt_uri_max_test,
 	&opt_uri_ns_bl,
 	&opt_uri_ns_a_bl,
 	&opt_version,
@@ -560,6 +566,12 @@ testURI(workspace data, URI *uri)
 
 		if (*p < 0)
 			return SMFIS_CONTINUE;
+	}
+
+	if (0 < opt_uri_max_test.value
+	&& VectorLength(data->uri_tested) < opt_uri_max_test.value) {
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "uri-max-test reached", TAG_ARGS);
+		return SMFIS_CONTINUE;
 	}
 
 	/* Session cache for previously PASSED hosts/domains. */

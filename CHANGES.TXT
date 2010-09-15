@@ -17,6 +17,13 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.5.3--
+
+   *	Requires LibSnert 1.74.11
+
+   +	Added uri-max-test option to limit number of unique URI tested.
+
+
 --1.5.2--
 
    *	Requires LibSnert 1.74.2

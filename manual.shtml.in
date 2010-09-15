@@ -933,6 +933,12 @@ or <code>.black.uribl.com</code>, first test the registered domain, then any
 sub-domains from right-to-left. Typically sub-domains are not listed.
 </dd>
 
+<a name="opt_uri_max_test"></a>
+<dt><span class="syntax">uri-max-test=</span><span class="param">0</span></dt>
+<dd>
+Maximum number of unique URI to check. Specify zero for unlimited.
+</dd>
+
 <a name="opt_uri_ns_bl"></a>
 <dt><span class="syntax">uri-ns-bl=</span><span class="param"></span></dt>
 <dd>
