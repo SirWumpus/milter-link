@@ -66,14 +66,29 @@
 
 #include <com/snert/lib/version.h>
 
-#include <sys/types.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 
+#ifdef HAVE_SYS_TYPE_H
+# include <sys/types.h>
+#endif
+
+#ifdef __sun__
+# define _POSIX_PTHREAD_SEMANTICS
+#endif
+#include <signal.h>
+
+#ifndef __MINGW32__
+# if defined(HAVE_SYSLOG_H)
+#  include <syslog.h>
+# endif
+#endif
+
+#ifdef HAVE_SQLITE3_H
+# include <sqlite3.h>
+#endif
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
 #endif
@@ -715,8 +730,8 @@ testList(workspace data, char *query, const char *delim)
 static sfsistat
 filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 {
-	int access;
 	workspace data;
+	smdb_code access;
 
 	statCount(&stat_connect_total);
 
@@ -777,12 +792,8 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		 * fails to report xxfi_connect handler rejections.
 		 */
 		statCount(&stat_access_bl);
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "connection %s [%s] blocked", TAG_ARGS, client_name, data->work.client_addr);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "client %s [%s] blocked", TAG_ARGS, client_name, data->work.client_addr);
 		return smfReply(&data->work, 550, "5.7.1", "connection %s [%s] blocked", client_name, data->work.client_addr);
-
-	case SMDB_ACCESS_ERROR:
-		statCount(&stat_access_other);
-		return SMFIS_REJECT;
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
@@ -794,6 +805,16 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		 * from localhost.
 		 */
 		return SMFIS_CONTINUE;
+
+	case SMDB_ACCESS_TEMPFAIL:
+		statCount(&stat_access_other);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "client %s [%s] temp.failed", TAG_ARGS, client_name, data->work.client_addr);
+		return smfReply(&data->work, 450, "4.7.1", "connection %s [%s] blocked", client_name, data->work.client_addr);
+
+	default:
+		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "client %s [%s] unknown access value", TAG_ARGS, client_name, data->work.client_addr);
+		statCount(&stat_access_other);
+		break;
 	}
 
 	statAddValue(&stat_connect_active, 1);
@@ -844,8 +865,8 @@ filterHelo(SMFICTX * ctx, char *helohost)
 static sfsistat
 filterMail(SMFICTX *ctx, char **args)
 {
-	int access;
 	workspace data;
+	smdb_code access;
 	char *auth_authen;
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
@@ -883,16 +904,15 @@ filterMail(SMFICTX *ctx, char **args)
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
-	/* smfAccessMail failure cases. */
 	case SMDB_ACCESS_TEMPFAIL:
+		statCount(&stat_access_other);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s temp.failed", TAG_ARGS, args[0]);
-		statCount(&stat_access_other);
-		return SMFIS_TEMPFAIL;
+		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
 
-	case SMDB_ACCESS_ERROR:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s unknown error", TAG_ARGS, args[0]);
+	default:
+		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "sender %s unknown access value", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
-		return SMFIS_REJECT;
+		break;
 	}
 
 	access = smfAccessAuth(&data->work, MILTER_NAME "-auth:", auth_authen, args[0], NULL, NULL);
@@ -904,20 +924,19 @@ filterMail(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, auth_authen);
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, TextNull(auth_authen));
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
-	/* smfAccessAuth failure cases. */
 	case SMDB_ACCESS_TEMPFAIL:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> temp.failed", TAG_ARGS, auth_authen);
 		statCount(&stat_access_other);
-		return SMFIS_TEMPFAIL;
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> temp.failed", TAG_ARGS, TextNull(auth_authen));
+		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
 
-	case SMDB_ACCESS_ERROR:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> unknown error", TAG_ARGS, auth_authen);
+	default:
+		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "authenticated id <%s> unknown access value", TAG_ARGS, TextNull(auth_authen));
 		statCount(&stat_access_other);
-		return SMFIS_REJECT;
+		break;
 	}
 
 	return SMFIS_CONTINUE;
@@ -947,16 +966,15 @@ filterRcpt(SMFICTX *ctx, char **args)
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
-	/* smfAccessRcpt failure cases. */
 	case SMDB_ACCESS_TEMPFAIL:
+		statCount(&stat_access_other);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s temp.failed", TAG_ARGS, args[0]);
-		statCount(&stat_access_other);
-		return SMFIS_TEMPFAIL;
+		return smfReply(&data->work, 450, "4.7.1", "recipient blocked");
 
-	case SMDB_ACCESS_ERROR:
-		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s unknown error", TAG_ARGS, args[0]);
+	default:
+		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "recipient %s unknown access value", TAG_ARGS, args[0]);
 		statCount(&stat_access_other);
-		return SMFIS_REJECT;
+		break;
 	}
 
 	if (testMail(data, data->work.mail->address.string) == SMFIS_REJECT)
@@ -1563,8 +1581,7 @@ main(int argc, char **argv)
 	}
 
 	if (*smfOptAccessDb.string != '\0') {
-		if (smfLogDetail & SMF_LOG_DATABASE)
-			smdbSetDebugMask(SMDB_DEBUG_ALL);
+		SMDB_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DATABASE) ? 2 : 0);
 
 		if ((smdbAccess = smdbOpen(smfOptAccessDb.string, 1)) == NULL) {
 			syslog(LOG_ERR, "failed to open \"%s\"", smfOptAccessDb.string);

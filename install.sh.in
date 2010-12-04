@@ -202,17 +202,17 @@ $INSTALL -m 444 rc.milters $examples/rc.milters
 ./${MILTER} -help >${MILTER}.cf
 $INSTALL -m 444 ${MILTER}.cf $examples/${MILTER}.cf
 
-if test -d $localstatedir/cache ; then
-	echo 'Creating.....' $localstatedir/cache/milter
-	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/cache/milter
-elif test -d $localstatedir/db ; then
-	echo 'Creating.....' $localstatedir/db/milter
-	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/db/milter
-fi
-if test -d $localstatedir/run ; then
-	echo 'Creating.....' $localstatedir/run/milter
-	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/run/milter
-fi
+#if test -d $localstatedir/cache ; then
+#	echo 'Creating.....' $localstatedir/cache/milter
+#	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/cache/milter
+#elif test -d $localstatedir/db ; then
+#	echo 'Creating.....' $localstatedir/db/milter
+#	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/db/milter
+#fi
+#if test -d $localstatedir/run ; then
+#	echo 'Creating.....' $localstatedir/run/milter
+#	$INSTALL -m 755 $INSTALL_USER -d $localstatedir/run/milter
+#fi
 
 echo
 echo '***************************************************************'

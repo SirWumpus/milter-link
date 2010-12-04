@@ -796,13 +796,13 @@ by port number. An empty list means all URI are tested.
 
 
 <a name="opt_quit"></a>
-<dt><span class="syntax">-quit</span> or <span class="syntax">+quit</span></dt>
+<dt>&plusmn;<span class="syntax">quit</span> or <span class="syntax">+quit</span></dt>
 <dd>Quit an already running instance of the milter and exit.
 This is equivalent to: <nobr><code>kill -QUIT `cat /var/run/milter/@PACKAGE_NAME@.pid`</code></nobr>
 </dd>
 
 <a name="opt_restart"></a>
-<dt><span class="syntax">-restart</span> or <span class="syntax">+restart</span></dt>
+<dt>&plusmn;<span class="syntax">restart</span> or <span class="syntax">+restart</span></dt>
 <dd>Terminate an already running instance of the milter before starting.
 </dd>
 
@@ -1041,8 +1041,7 @@ kernel option that permits daemon process core dumps is set.
 
 <a name="opt_version"></a>
 <dt>&plusmn;<span class="syntax">version</span></dt>
-Show version and copyright.
-</dd>
+<dd>Show version and copyright.</dd>
 
 </dl>
 

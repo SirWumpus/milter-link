@@ -151,6 +151,10 @@ dnl	COMPILE='${CC} ${CFLAGS} -c $<'
 	AC_SUBST(LIBSNERT)
 
 	AC_CHECK_TOOL(RANLIB, ranlib, true)
+
+	dnl Check for recent ANSI C additions that HAVE_HEADER_STDC check
+	dnl doesn't distinguish between C89 and C99.
+	SNERT_CHECK_DEFINE([va_copy], [stdarg.h])
 ])
 
 AC_DEFUN([SNERT_TAR_SETTINGS],[
@@ -194,6 +198,9 @@ int main()
 }
 		],ac_cv_define_$1=yes, ac_cv_define_$1=no)
 	])
+	if test $ac_cv_define_$1 = 'yes'; then
+		AC_DEFINE_UNQUOTED([HAVE_MACRO_]translit($1, [a-z], [A-Z]))
+	fi
 ])
 
 
@@ -213,6 +220,9 @@ int main()
 }
 		],ac_cv_define_$1=yes, ac_cv_define_$1=no)
 	])
+	if test $ac_cv_define_$1 = 'yes'; then
+		AC_DEFINE_UNQUOTED([HAVE_MACRO_]translit($1, [a-z], [A-Z]))
+	fi
 ])
 
 
@@ -650,7 +660,7 @@ AC_DEFUN(SNERT_LIBMILTER,[
 	fi
 
 	if test $ac_cv_header_libmilter_mfapi_h = 'yes' ; then
-		AC_CHECK_FUNCS([smfi_addheader smfi_addrcpt smfi_chgheader smfi_delrcpt smfi_getpriv smfi_getsymval smfi_main smfi_register smfi_replacebody smfi_setbacklog smfi_setconn smfi_setdbg smfi_setpriv smfi_setreply smfi_settimeout smfi_stop])
+		AC_CHECK_FUNCS([smfi_addheader smfi_addrcpt smfi_addrcpt_par smfi_chgfrom smfi_chgheader smfi_delrcpt smfi_getpriv smfi_getsymval smfi_main smfi_register smfi_replacebody smfi_setbacklog smfi_setconn smfi_setdbg smfi_setpriv smfi_setreply smfi_settimeout smfi_stop])
 		AC_CHECK_FUNCS([smfi_insheader smfi_opensocket smfi_progress smfi_quarantine smfi_setmlreply smfi_setsymlist smfi_version smfi_setmaxdatasize])
 	fi
 
@@ -1077,7 +1087,7 @@ AC_DEFUN(SNERT_PROCESS,[
 		AC_CHECK_FUNCS([geteuid getegid seteuid setegid getpgid setpgid])
 		AC_CHECK_FUNCS([getresuid getresgid setresuid setresgid])
 		AC_CHECK_FUNCS([setreuid getgroups setgroups initgroups])
-		AC_CHECK_FUNCS([_exit exit fork execl execle execlp execv execve execvp setsid])
+		AC_CHECK_FUNCS([_exit exit daemon fork execl execle execlp execv execve execvp setsid])
 	])
 	AC_CHECK_HEADER([sys/wait.h],[
 		AC_DEFINE_UNQUOTED(HAVE_SYS_WAIT_H)
@@ -1451,6 +1461,19 @@ AC_DEFUN(SNERT_REGEX,[
 ])
 
 dnl
+dnl SNERT_TERMIOS
+dnl
+AC_DEFUN(SNERT_TERMIOS,[
+	echo
+	echo "Check for termios..."
+	echo
+	AC_CHECK_HEADERS([termios.h],[
+		AC_CHECK_FUNCS(tcgetattr tcsetattr ctermid)
+	])
+])
+
+
+dnl
 dnl SNERT_OPTION_WITH_SQLITE3
 dnl
 dnl Depends on SNERT_PTHREAD
@@ -1627,14 +1650,26 @@ AC_DEFUN(SNERT_NETWORK,[
 		AC_SEARCH_LIBS([inet_aton], [socket nsl resolv])
 
 		AC_CHECK_HEADERS([ \
-			sys/socket.h netinet/in.h netinet/in6.h netinet6/in6.h netinet/tcp.h \
-			poll.h sys/poll.h sys/select.h sys/un.h arpa/inet.h \
+			sys/socket.h netinet/in.h netinet/in6.h netinet6/in6.h \
+			netinet/tcp.h poll.h sys/poll.h sys/select.h sys/un.h \
+			arpa/inet.h \
 		])
 
 dnl When using poll() use this block.
 dnl
 dnl #ifdef HAVE_POLL_H
 dnl # include <poll.h>
+dnl # ifndef INFTIM
+dnl #  define INFTIM	(-1)
+dnl # endif
+dnl #endif
+
+dnl When using kqueue() use this block.
+dnl
+dnl #ifdef HAVE_SYS_EVENT_H
+dnl # include <sys/types.h>
+dnl # include <sys/event.h>
+dnl # include <sys/time.h>
 dnl # ifndef INFTIM
 dnl #  define INFTIM	(-1)
 dnl # endif
@@ -1648,6 +1683,9 @@ dnl #endif
 			htonl htons ntohl ntohs \
 		])
 
+		AC_CHECK_HEADERS([sys/event.h],[AC_CHECK_FUNCS([kqueue kevent])])
+		AC_CHECK_HEADERS([sys/epoll.h],[AC_CHECK_FUNCS([epoll_create epoll_ctl epoll_wait epoll_pwait])])
+
 		AC_CHECK_HEADERS([netdb.h],[
 			AC_CHECK_FUNCS([ \
 				getaddrinfo freeaddrinfo getnameinfo \
@@ -1656,6 +1694,12 @@ dnl #endif
 				gethostent sethostent endhostent hstrerror herror \
 				getservent getservbyport getservbyname setservent endservent \
 				getprotoent getprotobynumber getprotobyname setprotoent endprotoent \
+			])
+		])
+
+		AC_CHECK_HEADERS([ifaddrs.h],[
+			AC_CHECK_FUNCS([ \
+				getifaddrs freeifaddrs
 			])
 		])
 	else
@@ -1815,6 +1859,19 @@ AC_DEFUN(SNERT_SYS,[
 	AC_CHECK_HEADERS([unistd.h],[
 		AC_CHECK_FUNCS(sysconf)
 	])
+])
+
+dnl
+dnl SNERT_BACKTRACE
+dnl
+AC_DEFUN(SNERT_BACKTRACE,[
+	echo
+	echo "Check for GNU backtrace support..."
+	echo
+	save_ldflags=$LDFLAGS
+	LDFLAGS="-rdynamic ${LDFLAGS}"
+	AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
+	AS_IF([test $ac_cv_func_backtrace = 'no'],[LDFLAGS="${save_ldflags}"])
 ])
 
 dnl

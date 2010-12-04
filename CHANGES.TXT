@@ -17,6 +17,16 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.5.5--
+
+   !	Fix up header inclusion; also include sqlite.h when available.
+
+   !	filterOpen: Add stat and debug message when an unknown access
+   	value is returned for a lookup.
+
+   !	Fixed a potential seg. fault in filterMail that may come about
+   	when there is auth_authen undefined (is NULL).
+
 --1.5.4--
 
   !!	Fixed incorrect inequality concerning uri-max-tested.
