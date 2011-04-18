@@ -26,7 +26,7 @@ dnl
 dnl SNERT_GCC_SETTINGS
 dnl
 m4_define([SNERT_GCC_SETTINGS],[
-	CFLAGS="-Wall ${CFLAGS}"
+	CFLAGS="-Wall -Wno-char-subscripts ${CFLAGS}"
 	if test ${enable_debug:-no} = 'no'; then
 		CFLAGS="-O2 ${CFLAGS}"
 		LDFLAGS="${LDFLAGS}"
@@ -1043,7 +1043,7 @@ dnl #endif
 
 	AC_CHECK_HEADERS([unistd.h fcntl.h sys/stat.h utime.h])
 	AC_CHECK_FUNCS([chdir getcwd mkdir rmdir closedir opendir readdir])
-	AC_CHECK_FUNCS([chmod chown chroot fchmod stat fstat link rename unlink umask utime])
+	AC_CHECK_FUNCS([chmod chown chroot fchmod stat fstat link rename symlink unlink umask utime])
 	AC_CHECK_FUNCS([close creat dup dup2 ftruncate chsize truncate lseek open pipe read write])
 	AC_CHECK_FUNCS([isatty getdtablesize])
 	AC_FUNC_CHOWN
@@ -1568,7 +1568,8 @@ AC_DEFUN(SNERT_BUILD_THREADED_SQLITE3,[
 		dir=`basename $tarfile .tar.gz`
 
 		is_amalgamation=false
-		AS_IF([expr ${dir} : 'sqlite-amalgamation-.*'],[is_amalgamation=true; i=`echo ${dir} | sed -e 's/amalgamation-//'`; dir=${i}])
+		AS_IF([expr ${dir} : 'sqlite-autoconf-.*'],[is_amalgamation=true])
+		AS_IF([! $is_amalgamation -a expr ${dir} : 'sqlite-amalgamation-.*'],[is_amalgamation=true; i=`echo ${dir} | sed -e 's/amalgamation-//'`; dir=${i}])
 
 		AC_SUBST(LIBSNERT_SQLITE3_VERSION, ${dir})
 
@@ -1599,7 +1600,9 @@ AC_DEFUN(SNERT_BUILD_THREADED_SQLITE3,[
 				echo
 				echo 'Configuring threaded SQLite3...'
 
+				sqlite3_cflags="-DSQLITE_ENABLE_UNLOCK_NOTIFY"
 				sqlite3_configure_options="--prefix=$with_sqlite3 --enable-threadsafe"
+
 				AS_IF([$is_amalgamation],
 					[sqlite3_configure_options="${sqlite3_configure_options} --disable-dynamic-extensions"],
 					[sqlite3_configure_options="${sqlite3_configure_options} --disable-amalgamation --disable-tcl --without-tcl"
@@ -1610,12 +1613,12 @@ AC_DEFUN(SNERT_BUILD_THREADED_SQLITE3,[
 
 				case $platform in
 				FreeBSD)
-					echo CFLAGS="-D_THREAD_SAFE -pthread ${CFLAGS}" LDFLAGS="-pthread ${LDFLAGS}" ./configure ${sqlite3_configure_options}
-					CFLAGS="-D_THREAD_SAFE -pthread ${CFLAGS}" LDFLAGS="-pthread ${LDFLAGS}" ./configure ${sqlite3_configure_options}
+					echo CFLAGS="'${sqlite3_cflags} -D_THREAD_SAFE -pthread ${CFLAGS}'" LDFLAGS="'-pthread ${LDFLAGS}'" ./configure ${sqlite3_configure_options}
+					CFLAGS="${sqlite3_cflags} -D_THREAD_SAFE -pthread ${CFLAGS}" LDFLAGS="-pthread ${LDFLAGS}" ./configure ${sqlite3_configure_options}
 					;;
 				*)
-					echo CFLAGS="'${CFLAGS}'" LDFLAGS="'${LDFLAGS}'" ./configure  ${sqlite3_configure_options}
-					CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ./configure  ${sqlite3_configure_options}
+					echo CFLAGS="'${sqlite3_cflags} ${CFLAGS}'" LDFLAGS="'${LDFLAGS}'" ./configure  ${sqlite3_configure_options}
+					CFLAGS="${sqlite3_cflags} ${CFLAGS}" LDFLAGS="${LDFLAGS}" ./configure  ${sqlite3_configure_options}
 					;;
 				esac
 				echo
