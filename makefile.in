@@ -44,21 +44,42 @@ SNERT_LIBDIR	= @rel_libdir@
 
 TARFILE	= ${MILTER}-${VERSION}.tar.gz
 
-CC	= @CC@
-CC_E	= @CC_E@
-CC_O	= @CC_O@
-CFLAGS	= @CFLAGS@
-LDFLAGS	= @LDFLAGS@
-LIBS	= @LIBS@
-TAR_I	= @TAR_I@
+CC		:= @CC@
+CC_E		:= @CC_E@
+CC_O		:= @CC_O@
+TAR_I		:= @TAR_I@
 
-ARCHIVE	= @ARCHIVE@
-COMPILE	= @COMPILE@
-RANLIB	= @RANLIB@
-MD5SUM	= @MD5SUM@
-AUTOCONF= @AUTOCONF@
+ARCHIVE		:= @ARCHIVE@
+COMPILE		:= @COMPILE@
+RANLIB		:= @RANLIB@
+MD5SUM		:= @MD5SUM@
+AUTOCONF	:= @AUTOCONF@
 
-MILTER_BUILD=`cat BUILD_ID.TXT`
+MILTER_BUILD	:=`cat BUILD_ID.TXT`
+
+LIBSNERT 	:= @LIBSNERT@
+LIB_RT 		:= @HAVE_LIB_RT@
+LIB_SEM		:= @HAVE_LIB_SEM@
+
+LIB_DB		:= @HAVE_LIB_DB@
+CFLAGS_DB	:= @CFLAGS_DB@
+LDFLAGS_DB	:= @LDFLAGS_DB@
+
+LIB_MILTER	:= @HAVE_LIB_MILTER@
+CFLAGS_MILTER	:= @CFLAGS_MILTER@
+LDFLAGS_MILTER	:= @LDFLAGS_MILTER@
+
+LIB_PTHREAD	:= @HAVE_LIB_PTHREAD@
+CFLAGS_PTHREAD	:= @CFLAGS_PTHREAD@
+LDFLAGS_PTHREAD	:= @LDFLAGS_PTHREAD@
+
+LIB_SQLITE3	:= @HAVE_LIB_SQLITE3@
+CFLAGS_SQLITE3	:= @CFLAGS_SQLITE3@
+LDFLAGS_SQLITE3	:= @LDFLAGS_SQLITE3@
+
+CFLAGS	:= ${CFLAGS_MILTER} ${CFLAGS_SQLITE3} ${CFLAGS_DB} ${CFLAGS_PTHREAD} @CFLAGS@
+LDFLAGS	:= ${LDFLAGS_MILTER} ${LDFLAGS_SQLITE3} ${LDFLAGS_DB} ${LDFLAGS_PTHREAD} @LDFLAGS@
+LIBS	:= @LIBS@ ${LIB_MILTER} ${LIB_SQLITE3} ${LIB_DB} ${LIB_SEM} ${LIB_PTHREAD}
 
 #######################################################################
 
@@ -67,7 +88,7 @@ MILTER_BUILD=`cat BUILD_ID.TXT`
 build : ${MILTER}
 	@echo
 	@echo '***************************************************************'
-	@echo Build `cat BUILD_ID.TXT` DONE
+	@echo Build ${VERSION}.${MILTER_BUILD} DONE
 	@echo '***************************************************************'
 	@echo
 
@@ -81,7 +102,7 @@ clean:
 
 distclean: clean
 	@echo '---------------------------------------------------------------'
-	-rm -f ${MILTER}.md5 *.o *.obj *.tds *.log *.exe *.core
+	-rm -f ${MILTER} ${MILTER}.md5 *.o *.obj *.tds *.log *.exe *.core
 	-rm -f sample.mc startup.sh install.sh config.h makefile
 	-rm -rf autom4te.cache config.status config.log configure.lineno
 	@echo

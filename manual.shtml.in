@@ -46,13 +46,12 @@ UNDERSTANDS AND ACCEPTS THE RISKS INVOLVED.
 
 <p>
 This <a href="http://www.sendmail.org/">Sendmail</a> mail filter extracts URIs, such http: and mailto: links,
-from within text, HTML, and/or MIME encoded messages,
-can verify if web page links do not work,
-and consult with one or more URI black lists, such as
+from within text, HTML, and/or MIME encoded messages, can verify if web page links do not work,
+and consult with one or more DNS based black lists, such as
 <a href="http://www.surbl.org/">SURBL</a>,
-<a href="http://www.uribl.com/">URIBL</a>
-, and/or <a href="http://www.spamhaus.org/">SpamHaus</a>
-as to whether the URI domains have appeared in previous instances of spam.
+<a href="http://www.uribl.com/">URIBL</a>,
+and/or <a href="http://www.spamhaus.org/dbl/">SpamHaus DBL</a>
+as to whether the domains have appeared in previous instances of spam.
 </p>
 <!-- Common Milter Options -->
 
@@ -111,15 +110,15 @@ domains, mail addresses, etc. The following methods are supported:
 
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr><td width="60%" class="syntax tline">text!/path/map.txt</td><td width="40%" class="tline">R/O text file, memory hash</td></tr>
-<tr><td width="60%" class="syntax">/path/map.db</td><td width="40%">Berkeley DB hash format</td></tr>
-<tr><td width="60%" class="syntax">db!/path/map.db</td><td width="40%">Berkeley DB hash format</td></tr>
-<tr><td width="60%" class="syntax">db!btree!/path/map.db</td><td width="40%">Berkeley DB btree format</td></tr>
-<tr><td width="60%" class="syntax">sql!/path/database</td><td width="40%">An SQLite3 database</td></tr>
-<tr><td width="60%" class="syntax">socketmap!host:port</td><td width="40%">Sendmail style socket-map</td></tr>
-<tr><td width="60%" class="syntax">socketmap!/path/local/socket</td><td width="40%">Sendmail style socket-map</td></tr>
-<tr><td width="60%" class="syntax">socketmap!123.45.67.89:port</td><td width="40%">Sendmail style socket-map</td></tr>
-<tr><td width="60%" class="syntax bline">socketmap![2001:0DB8::1234]:port</td><td width="40%" class="bline">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="param tline bdotted">text!/path/map.txt</td><td width="40%" class="tline bdotted">R/O text file, memory hash</td></tr>
+<tr><td width="60%" class="param bdotted">/path/map.db</td><td width="40%" class="bdotted">Berkeley DB hash format</td></tr>
+<tr><td width="60%" class="param bdotted">db!/path/map.db</td><td width="40%" class="bdotted">Berkeley DB hash format</td></tr>
+<tr><td width="60%" class="param bdotted">db!btree!/path/map.db</td><td width="40%" class="bdotted">Berkeley DB btree format</td></tr>
+<tr><td width="60%" class="param bdotted">sql!/path/database</td><td width="40%" class="bdotted">An SQLite3 database</td></tr>
+<tr><td width="60%" class="param bdotted">socketmap!host:port</td><td width="40%" class="bdotted">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="param bdotted">socketmap!/path/local/socket</td><td width="40%" class="bdotted">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="param bdotted">socketmap!123.45.67.89:port</td><td width="40%" class="bdotted">Sendmail style socket-map</td></tr>
+<tr><td width="60%" class="param bline">socketmap![2001:0DB8::1234]:port</td><td width="40%" class="bline">Sendmail style socket-map</td></tr>
 </table>
 </blockquote>
 <p>
@@ -340,9 +339,9 @@ a numerical value; or some arbitrary string depending on the tag involved. For e
 
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr valign="top"><td width="41%" class="key bdotted tline">Connect:192.168.0</td><td width="59%" class="value bdotted tline">OK</td></tr>
-<tr valign="top"><td width="41%" class="key bdotted">Rate-Connect:fsl.com</td><td width="59%" class="value bdotted">17</td></tr>
-<tr valign="top"><td width="41%" class="key bline">Msg-Limit-From:hotmail.com</td><td width="59%" class="value bline">150/30m</td></tr>
+<tr valign="top"><td width="41%" class="key tline bdotted"><span class="tag">Connect:</span>192.168.0</td><td width="59%" class="value tline bdotted">OK</td></tr>
+<tr valign="top"><td width="41%" class="key bdotted"><span class="tag">Rate-Connect:</span>fsl.com</td><td width="59%" class="value bdotted">17</td></tr>
+<tr valign="top"><td width="41%" class="key bline"><span class="tag">Msg-Limit-From:</span>hotmail.com</td><td width="59%" class="value bline">150/30m</td></tr>
 </table>
 </blockquote>
 
@@ -353,7 +352,7 @@ The action words supported by @PACKAGE_NAME@ are:
 
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr valign="top"><td width="41%" class="value bdotted tline">OK</td><td width="59%" class="bdotted tline">White list, by-pass one or more tests.</td></tr>
+<tr valign="top"><td width="41%" class="value tline bdotted">OK</td><td width="59%" class="tline bdotted">White list, by-pass one or more tests.</td></tr>
 <tr valign="top"><td width="41%" class="value bdotted">REJECT</td><td width="59%" class="bdotted">Black list, reject connection, sender, recipient, etc.</td></tr>
 <tr valign="top"><td width="41%" class="value bdotted">SKIP</td><td width="59%" class="bdotted">Stop lookup and return no result ie. continue testing.</td></tr>
 <tr valign="top"><td width="41%" class="value bline">DUNNO</td><td width="59%" class="bline">Same as SKIP, commonly used by postfix.</td></tr>
@@ -407,7 +406,7 @@ accepting connections from mail and web servers.
 </p>
 
 <blockquote><pre>
-Connect:hananet.net	!adsl-*-*.usr.hananet.net!REJECT
+<span class="key"><span class="tag">Connect:</span>hananet.net</span>	<span class="value">!adsl-*-*.usr.hananet.net!REJECT</span>
 </pre></blockquote>
 
 <p>
@@ -418,7 +417,7 @@ a form being filled in.
 </p>
 
 <blockquote><pre>
-Connect:hananet.net	!smtp*.hananet.net!OK !www*.hananet.net!OK REJECT
+<span class="key"><span class="tag">Connect:</span>hananet.net</span>	<span class="value">!smtp*.hananet.net!OK !www*.hananet.net!OK REJECT</span>
 </pre></blockquote>
 
 <a name="access_about_spf"></a>
@@ -440,8 +439,8 @@ pattern matches; otherwise if the regular expression failed to match, REJECT the
 </p>
 
 <blockquote style="font-family: monospace;">
-From:grandma@aol.com OK
-<br/>From:aol.com /^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/SKIP REJECT
+<span class="key"><span class="tag">From:</span>grandma@aol.com</span>		<span class="value">OK</span>
+<br/><span class="key"><span class="tag">From:</span>aol.com</span>	<span class="value">/^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/SKIP REJECT</span>
 </blockquote>
 
 <p>
@@ -483,8 +482,8 @@ So for example if you have tags like:
 
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
-<tr class="syntax">
-	<td width="65%">To:mx.example.com</td><td width="35%">RELAY</td>
+<tr>
+<td width="65%" class="key"><span class="tag">To:</span>mx.example.com</td><td width="35%" class="value">RELAY</td>
 </tr>
 </table>
 </blockquote>
@@ -497,10 +496,10 @@ mail still gets filtered:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
 <tr class="syntax">
-	<td width="65%">To:mx.example.com</td><td width="35%">RELAY</td>
+	<td width="65%" class="key"><span class="tag">To:</span>mx.example.com</td><td width="35%" class="value">RELAY</td>
 </tr>
 <tr class="syntax">
-	<td>@PACKAGE_NAME@-To:mx.example.com</td><td>SKIP</td>
+	<td class="key"><span class="tag">@PACKAGE_NAME@-To:</span>mx.example.com</td><td class="value">SKIP</td>
 </tr>
 </table>
 </blockquote>
@@ -512,52 +511,52 @@ Some additional examples:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
 <tr class="syntax" valign="top">
-	<td width="40%" class="tline">@PACKAGE_NAME@-Connect:80.94</td>
-	<td width="60%" class="tline" style="text-align: right;">[80.94.96.0/20]OK&nbsp;&nbsp;REJECT</td>
+	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>80.94</td>
+	<td width="60%" class="tline value" style="text-align: right;">[80.94.96.0/20]OK&nbsp;&nbsp;REJECT</td>
 </tr>
-<tr><td colspan="2">&nbsp;</td></tr>
 <tr class="normal">
 	<td colspan="2">
+		<br/>
 		Accept connections from the netblock 80.94.96.0/20 (80.94.96.0 through to 80.94.111.255) and
 		rejecting anything else in 80.94.0.0/16.
+		<br/><br/>
 	</td>
 </tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
 <tr class="syntax" valign="top">
-	<td width="40%">@PACKAGE_NAME@-Connect:192.0.2</td>
-	<td width="60%" style="text-align: right;">/^192\.0\.2\.8[0-9]/OK&nbsp;&nbsp;REJECT</td>
+	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>192.0.2</td>
+	<td width="60%" class="tline value" style="text-align: right;">/^192\.0\.2\.8[0-9]/OK&nbsp;&nbsp;REJECT</td>
 </tr>
-<tr><td colspan="2">&nbsp;</td></tr>
 <tr class="normal">
 	<td colspan="2">
+		<br/>
 		Accept connections from 192.0.2.80 through to 192.0.2.89, reject everything else in 192.0.2.0/24.
+		<br/><br/>
 	</td>
 </tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
 <tr class="syntax" valign="top">
-	<td width="40%">@PACKAGE_NAME@-From:example.com</td>
-	<td width="60%" style="text-align: right;">/^john@.+/OK&nbsp;&nbsp;/^fred\+.*@.*/OK&nbsp;&nbsp;REJECT</td>
+	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-From:</span>example.com</td>
+	<td width="60%" class="tline value" style="text-align: right;">/^john@.+/OK&nbsp;&nbsp;/^fred\+.*@.*/OK&nbsp;&nbsp;REJECT</td>
 </tr>
-<tr><td colspan="2">&nbsp;</td></tr>
 <tr class="normal">
 	<td colspan="2">
+		<br/>
 		Accept mail from &lt;john@example.com&gt; and &lt;fred@example.com&gt; when fred's address
 		contains a plus-detail in the address. Reject everything else from example.com.
+		<br/><br/>
 	</td>
 </tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
 <tr class="syntax" valign="top">
-	<td width="40%">@PACKAGE_NAME@-To:example.net</td>
-	<td width="60%" style="text-align: right;">!*+*@*!REJECT&nbsp;&nbsp;!*.smith@*!REJECT&nbsp;&nbsp;/^[0-9].*/REJECT</td>
+	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-To:</span>example.net</td>
+	<td width="60%" class="tline value" style="text-align: right;">!*+*@*!REJECT&nbsp;&nbsp;!*.smith@*!REJECT&nbsp;&nbsp;/^[0-9].*/REJECT</td>
 </tr>
-<tr><td colspan="2">&nbsp;</td></tr>
 <tr class="normal">
-	<td colspan="2">
+	<td colspan="2" class="bline">
+		<br/>
 		Reject mail to example.net using a plus-detail address or to any user who's last name is "smith" or addresses
-		starting with a digit. No default given, so it is assumed to be SKIP..
+		starting with a digit. No default given, so it is assumed to be SKIP.
+		<br/><br/>
 	</td>
 </tr>
-<tr><td colspan="2" class="bline">&nbsp;</td></tr>
 </table>
 </blockquote>
 
@@ -694,23 +693,23 @@ mail-bl, then apply one of the following policies:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline param" width="40%">&nbsp;none</td>
 	<td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline param">&nbsp;tag</td>
 	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline param">&nbsp;quarantine</td>
 	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline param">&nbsp;reject</td>
 	<td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline param">&nbsp;discard</td>
 	<td class="bline">Discard the message.</td>
 </tr>
 </table>
@@ -743,23 +742,23 @@ the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline param" width="40%">&nbsp;none</td>
 	<td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline param">&nbsp;tag</td>
 	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline param">&nbsp;quarantine</td>
 	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline param">&nbsp;reject</td>
 	<td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline param">&nbsp;discard</td>
 	<td class="bline">Discard the message.</td>
 </tr>
 </table>
@@ -902,23 +901,23 @@ then apply one of the following policies:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline syntax" width="40%">&nbsp;none</td>
+	<td class="tline bline param" width="40%">&nbsp;none</td>
 	<td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;tag</td>
+	<td class="bline param">&nbsp;tag</td>
 	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;quarantine</td>
+	<td class="bline param">&nbsp;quarantine</td>
 	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;reject</td>
+	<td class="bline param">&nbsp;reject</td>
 	<td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline syntax">&nbsp;discard</td>
+	<td class="bline param">&nbsp;discard</td>
 	<td class="bline">Discard the message.</td>
 </tr>
 </table>
@@ -1285,7 +1284,7 @@ milter:milter before starting the accept socket thread.
 
 <!-- License Agreement -->
 
-<h3>License Agreement 1.7</h3>
+<h3>License Agreement 1.8</h3>
 <p>
 SNERTSOFT &amp; CO. ARE WILLING TO LICENSE THE SOFTWARE IDENTIFIED ABOVE TO YOU
 ONLY UPON THE CONDITION THAT YOU ACCEPT ALL OF THE TERMS CONTAINED
@@ -1348,7 +1347,10 @@ and is in the public domain.
 strnatcmp.c is written by Martin Pool of sourcefrog.net and
      	has a BSD style license.
 		</p></li>
-
+		<li><p>
+Protothreads headers originally written by Adam Dunkels and
+has a BSD style license.
+		</p></li>
 
 		</ol>
 	</li>

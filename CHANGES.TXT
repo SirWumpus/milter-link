@@ -17,6 +17,16 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.6.0--
+
+   *	Requires LibSnert 1.75.8
+
+   !	Overhaulled to apply PDQ, MIME, and URI API changes in libnsert
+	1.75 and obtain latest library fixes.
+
+  !!	Fixed segmentation faults when handling of SMDB_ACCESS_ERROR was
+	changed between between 1.4.0 and 1.5.5.
+
 --1.5.5--
 
    !	Fix up header inclusion; also include sqlite.h when available.

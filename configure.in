@@ -6,13 +6,13 @@
 #	Thus it begins...
 #######################################################################
 
-AC_INIT(milter-link, 1.5, [Anthony Howe <achowe@snert.com>])
+AC_INIT(milter-link, 1.6, [Anthony Howe <achowe@snert.com>])
 
 dnl The autoconf version I learned to deal with.
 AC_PREREQ(2.59)
 
 dnl Yes I wrote this mess.
-SNERT_INIT(MILTER, [Copyright 2006, 2010 by Anthony Howe. All rights reserved.])
+SNERT_INIT(MILTER, [Copyright 2006, 2012 by Anthony Howe. All rights reserved.])
 
 AC_SUBST(snert_milter_t_equate, 'C:10s;R:1m;E:5m')
 
@@ -77,13 +77,26 @@ if test -f '../lib/version.sh' ; then
 	AC_SUBST(MD5SUM)
 	AC_SUBST(TAR_I)
 
-	AC_SUBST(HAVE_LIB_DB)
 	AC_SUBST(HAVE_LIB_RT)
+	AC_SUBST(HAVE_LIB_SEM)
+
+	AC_SUBST(CFLAGS_DB)
+	AC_SUBST(LDFLAGS_DB)
+	AC_SUBST(HAVE_LIB_DB)
+
+	AC_SUBST(CFLAGS_MILTER)
+	AC_SUBST(LDFLAGS_MILTER)
 	AC_SUBST(HAVE_LIB_MILTER)
-	AC_SUBST(HAVE_LIB_PTHREAD)
+
+	AC_SUBST(CFLAGS_SQLITE3)
+	AC_SUBST(LDFLAGS_SQLITE3)
 	AC_SUBST(HAVE_LIB_SQLITE3)
 
-	if test "X${HAVE_LIB_PTHREAD}" = 'X' ; then
+	AC_SUBST(CFLAGS_PTHREAD)
+	AC_SUBST(LDFLAGS_PTHREAD)
+	AC_SUBST(HAVE_LIB_PTHREAD)
+
+	if test "${HAVE_LIB_PTHREAD:-no}" = 'no' -a "${CFLAGS_PTHREAD:-no}" = 'no' ; then
 		echo
 		echo '***************************************************************'
 		echo "       Sendmail milters require POSIX thread support."
@@ -101,8 +114,6 @@ if test -f '../lib/version.sh' ; then
 		echo
 		exit 1
 	fi
-
-	LIBS="${LIBS} ${HAVE_LIB_MILTER} ${HAVE_LIB_DB} ${HAVE_LIB_SQLITE3} ${HAVE_LIB_RT} ${HAVE_LIB_PTHREAD}"
 else
 	snert_libsnert=no
 	echo

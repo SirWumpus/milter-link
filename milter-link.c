@@ -1,14 +1,21 @@
 /*
  * milter-link.c
  *
- * Copyright 2003, 2010 by Anthony Howe. All rights reserved.
+ * Copyright 2003, 2012 by Anthony Howe. All rights reserved.
  *
  * The following should be added to the sendmail.mc file:
  *
  *	INPUT_MAIL_FILTER(
  *		`milter-link',
- *		`S=unix:/var/lib/milter-link/socket, T=S:10s;R:10s'
+ *		`S=unix:/var/run/milter/milter-link.socket, T=C:10s;R:1m;E:5m'
  *	)dnl
+ */
+
+/* "milter-link has the most complete and flexible URL lookup feature
+ *  set making it the ideal tool to make the most of URIBL.com's data
+ *  sets. Its ease of use and rock solid performance has made it an
+ *  invaluable tool on our high traffic trap servers."
+ *  - URIBL.com Admin Team
  */
 
 /***********************************************************************
@@ -106,8 +113,8 @@
 #include <com/snert/lib/util/uri.h>
 #include <com/snert/lib/sys/sysexits.h>
 
-#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 74
-# error "LibSnert 1.74.2 or better is required"
+#if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 75
+# error "LibSnert 1.75.8 or better is required"
 #endif
 
 # define MILTER_STRING	MILTER_NAME "/" MILTER_VERSION
@@ -136,6 +143,7 @@ typedef struct {
 	int hasReport;				/* per message */
 	int hasSubject;				/* per message */
 	int stop_uri_scanning;			/* per message */
+	sfsistat uri_found_rc;			/* per message */
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
 	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 
@@ -397,7 +405,9 @@ static Stat stat_##name = { stat_name_##name }
 #define STAT_POINTER(name)	&stat_##name
 
 STAT_DECLARE(start_time);
+#ifdef HAVE_SMFI_VERSION
 STAT_DECLARE(run_time);
+#endif
 STAT_DECLARE(connect_active);
 STAT_DECLARE(connect_total);
 STAT_DECLARE(connect_error);
@@ -410,14 +420,17 @@ STAT_DECLARE(mail_fail);
 STAT_DECLARE(origin_fail);
 STAT_DECLARE(uri_fail);
 STAT_DECLARE(tag);
+STAT_DECLARE(error);
 STAT_DECLARE(reject);
 STAT_DECLARE(discard);
+STAT_DECLARE(tempfail);
 #ifdef HAVE_SMFI_QUARANTINE
 STAT_DECLARE(quarantine);
 #endif
 
 #define SMF_MAX_MULTILINE_REPLY		32
 
+#ifdef HAVE_SMFI_VERSION
 static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
 	&stat_start_time,
 	&stat_run_time,
@@ -426,8 +439,10 @@ static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
 	&stat_connect_error,
 	&stat_transactions,
 	&stat_tag,
+	&stat_error,
 	&stat_reject,
 	&stat_discard,
+	&stat_tempfail,
 #ifdef HAVE_SMFI_QUARANTINE
 	&stat_quarantine,
 #endif
@@ -440,6 +455,7 @@ static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
 	&stat_uri_fail,
 	NULL
 };
+#endif /* HAVE_SMFI_VERSION */
 
 void
 statInit(void)
@@ -535,37 +551,48 @@ testMail(workspace data, const char *mail)
 	return rc;
 }
 
-sfsistat
+static sfsistat
 testMailUri(workspace data, URI *uri)
 {
 	return testMail(data, uri->uriDecoded);
 }
 
-static sfsistat
-testString(workspace data, const char *value, sfsistat (*test_fn)(workspace, URI *))
+void
+mime_test_mail_uri(URI *uri, void *_data)
 {
-	int rc;
-	URI *uri;
-	Mime *mime;
+	workspace data = _data;
+	data->uri_found_rc = testMailUri(data, uri);
+}
 
-	if (value == NULL || (mime = uriMimeCreate(0)) == NULL)
+static sfsistat
+testString(workspace data, const char *value, UriMimeHook test_fn)
+{
+	Mime *mime;
+	UriMime *uri_mime;
+
+	if (value == NULL)
 		return SMFIS_CONTINUE;
 
-	mimeHeadersFirst(mime, 0);
+	if ((mime = mimeCreate()) == NULL)
+		return SMFIS_CONTINUE;
 
-	for (rc = SMFIS_CONTINUE; rc == SMFIS_CONTINUE && *value != '\0'; value++) {
-		if (mimeNextCh(mime, *value))
-			break;
-
-		if ((uri = uriMimeGetUri(mime)) != NULL) {
-			rc = (*test_fn)(data, uri);
-			uriMimeFreeUri(mime);
-		}
+	if ((uri_mime = uriMimeInit(test_fn, 1, data)) == NULL) {
+		free(mime);
+		return SMFIS_CONTINUE;
 	}
 
-	uriMimeFree(mime);
+	mimeHooksAdd(mime, (MimeHooks *) uri_mime);
+	mimeHeadersFirst(mime, 0);
 
-	return rc;
+	for ( ; data->uri_found_rc == SMFIS_CONTINUE && *value != '\0'; value++) {
+		if (mimeNextCh(mime, *value))
+			break;
+	}
+	(void) mimeNextCh(mime, EOF);
+
+	mimeFree(mime);
+
+	return data->uri_found_rc;
 }
 
 static sfsistat
@@ -681,6 +708,13 @@ error0:
 	return rc;
 }
 
+void
+mime_test_uri(URI *uri, void *_data)
+{
+	workspace data = _data;
+	data->uri_found_rc = testURI(data, uri);
+}
+
 static sfsistat
 testList(workspace data, char *query, const char *delim)
 {
@@ -720,6 +754,30 @@ testList(workspace data, char *query, const char *delim)
 	return rc;
 }
 
+void
+process_uri(URI *uri, void *_data)
+{
+	sfsistat rc;
+	workspace data = _data;
+
+	smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
+
+	if ((rc = testURI(data, uri)) == SMFIS_CONTINUE) {
+		if (uri->query == NULL)
+			rc = testList(data, uri->path, "&");
+		else if ((rc = testList(data, uri->query, "&")) == SMFIS_CONTINUE)
+			rc = testList(data, uri->query, "/");
+		if (rc == SMFIS_CONTINUE)
+			rc = testList(data, uri->path, "/");
+	}
+
+	if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == SMTP_PORT) {
+		rc = testMail(data, uri->uriDecoded);
+	}
+
+	data->uri_found_rc = rc;
+}
+
 /***********************************************************************
  *** Handlers
  ***********************************************************************/
@@ -732,6 +790,7 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 {
 	workspace data;
 	smdb_code access;
+	UriMime *uri_mime;
 
 	statCount(&stat_connect_total);
 
@@ -764,8 +823,12 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	 * based on demand (see uri CLI and BarricadeMX which support
 	 * testing URI foundin headers).
 	 */
-	if ((data->mime = uriMimeCreate(0)) == NULL)
+	if ((data->mime = mimeCreate()) == NULL)
 		goto error2;
+
+	if ((uri_mime = uriMimeInit(process_uri, 0, data)) == NULL)
+		goto error3;
+	mimeHooksAdd(data->mime, (MimeHooks *) uri_mime);
 
 	if ((data->uri_tested = VectorCreate(10)) == NULL)
 		goto error3;
@@ -787,6 +850,10 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	access = smfAccessHost(&data->work, MILTER_NAME "-connect:", client_name, data->work.client_addr, SMDB_ACCESS_OK);
 
 	switch (access) {
+	case SMDB_ACCESS_ERROR:
+		statCount(&stat_error);
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_REJECT:
 		/* Report this mail error ourselves, because sendmail/milter API
 		 * fails to report xxfi_connect handler rejections.
@@ -807,7 +874,7 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		return SMFIS_CONTINUE;
 
 	case SMDB_ACCESS_TEMPFAIL:
-		statCount(&stat_access_other);
+		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "client %s [%s] temp.failed", TAG_ARGS, client_name, data->work.client_addr);
 		return smfReply(&data->work, 450, "4.7.1", "connection %s [%s] blocked", client_name, data->work.client_addr);
 
@@ -827,7 +894,7 @@ error5:
 error4:
 	VectorDestroy(data->uri_tested);
 error3:
-	uriMimeFree(data->mime);
+	mimeFree(data->mime);
 error2:
 	pdqClose(data->pdq);
 error1:
@@ -856,7 +923,7 @@ filterHelo(SMFICTX * ctx, char *helohost)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterHelo(%lx, '%s')", TAG_ARGS, (long) ctx, TextNull(helohost));
 
-	if (opt_uri_bl_helo.value && testString(data, helohost, testURI) == SMFIS_REJECT)
+	if (opt_uri_bl_helo.value && testString(data, helohost, mime_test_uri) == SMFIS_REJECT)
 		return smfReply(&data->work, 550, NULL, "%s", data->reply);
 
 	return SMFIS_CONTINUE;
@@ -880,8 +947,8 @@ filterMail(SMFICTX *ctx, char **args)
 	data->policy = '\0';
 	data->reply[0] = '\0';
 	data->subject[0] = '\0';
-
 	data->stop_uri_scanning = 0;
+	data->uri_found_rc = SMFIS_CONTINUE;
 	VectorRemoveAll(data->ns_tested);
 	VectorRemoveAll(data->uri_tested);
 
@@ -894,6 +961,11 @@ filterMail(SMFICTX *ctx, char **args)
 	access = smfAccessMail(&data->work, MILTER_NAME "-from:", args[0], SMDB_ACCESS_UNKNOWN);
 
 	switch (access) {
+	case SMDB_ACCESS_ERROR:
+		/* Parse error. */
+		statCount(&stat_error);
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_REJECT:
 		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
@@ -905,7 +977,7 @@ filterMail(SMFICTX *ctx, char **args)
 		return SMFIS_ACCEPT;
 
 	case SMDB_ACCESS_TEMPFAIL:
-		statCount(&stat_access_other);
+		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s temp.failed", TAG_ARGS, args[0]);
 		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
 
@@ -918,6 +990,10 @@ filterMail(SMFICTX *ctx, char **args)
 	access = smfAccessAuth(&data->work, MILTER_NAME "-auth:", auth_authen, args[0], NULL, NULL);
 
 	switch (access) {
+	case SMDB_ACCESS_ERROR:
+		statCount(&stat_error);
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_REJECT:
 		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "sender blocked");
@@ -929,7 +1005,7 @@ filterMail(SMFICTX *ctx, char **args)
 		return SMFIS_ACCEPT;
 
 	case SMDB_ACCESS_TEMPFAIL:
-		statCount(&stat_access_other);
+		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> temp.failed", TAG_ARGS, TextNull(auth_authen));
 		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
 
@@ -956,6 +1032,11 @@ filterRcpt(SMFICTX *ctx, char **args)
 	access = smfAccessRcpt(&data->work, MILTER_NAME "-to:", args[0]);
 
 	switch (access) {
+	case SMDB_ACCESS_ERROR:
+		/* Parse error. */
+		statCount(&stat_error);
+		return SMFIS_REJECT;
+
 	case SMDB_ACCESS_REJECT:
 		statCount(&stat_access_bl);
 		return smfReply(&data->work, 550, "5.7.1", "recipient blocked");
@@ -967,7 +1048,7 @@ filterRcpt(SMFICTX *ctx, char **args)
 		return SMFIS_ACCEPT;
 
 	case SMDB_ACCESS_TEMPFAIL:
-		statCount(&stat_access_other);
+		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s temp.failed", TAG_ARGS, args[0]);
 		return smfReply(&data->work, 450, "4.7.1", "recipient blocked");
 
@@ -987,7 +1068,6 @@ static sfsistat
 filterHeader(SMFICTX *ctx, char *name, char *value)
 {
 	char *s;
-	sfsistat rc;
 	workspace data;
 	const char **table;
 
@@ -1013,6 +1093,7 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	for (s = name; *s != '\0'; s++)
 		(void) mimeNextCh(data->mime, *s);
 	(void) mimeNextCh(data->mime, ':');
+	(void) mimeNextCh(data->mime, ' ');
 
 	for (s = value; *s != '\0'; s++)
 		(void) mimeNextCh(data->mime, *s);
@@ -1020,12 +1101,14 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	(void) mimeNextCh(data->mime, '\n');
 
 	for (table = (const char **) VectorBase(uri_bl_headers); *table != NULL; table++) {
-		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testString(data, value, testURI)) != SMFIS_CONTINUE)
+		if (TextInsensitiveCompare(name, *table) == 0
+		&& testString(data, value, mime_test_uri) != SMFIS_CONTINUE)
 			break;
 	}
 
 	for (table = (const char **) VectorBase(mail_bl_headers); *table != NULL; table++) {
-		if (TextInsensitiveCompare(name, *table) == 0 && (rc = testString(data, value, testMailUri)) != SMFIS_CONTINUE)
+		if (TextInsensitiveCompare(name, *table) == 0
+		&& testString(data, value, mime_test_mail_uri) != SMFIS_CONTINUE)
 			break;
 	}
 
@@ -1052,8 +1135,6 @@ filterEndHeaders(SMFICTX *ctx)
 static sfsistat
 filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 {
-	URI *uri;
-	sfsistat rc;
 	workspace data;
 	unsigned char *stop;
 
@@ -1083,27 +1164,8 @@ filterBody(SMFICTX *ctx, unsigned char *chunk, size_t size)
 	for (stop = chunk + size; chunk < stop; chunk++) {
 		if (mimeNextCh(data->mime, *chunk))
 			break;
-
-		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
-			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
-
-			if ((rc = testURI(data, uri)) == SMFIS_CONTINUE) {
-				if (uri->query == NULL)
-					rc = testList(data, uri->path, "&");
-				else if ((rc = testList(data, uri->query, "&")) == SMFIS_CONTINUE)
-					rc = testList(data, uri->query, "/");
-				if (rc == SMFIS_CONTINUE)
-					rc = testList(data, uri->path, "/");
-			}
-
-			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == SMTP_PORT) {
-				rc = testMail(data, uri->uriDecoded);
-			}
-
-			uriMimeFreeUri(data->mime);
-			if (rc != SMFIS_CONTINUE)
-				break;
-		}
+		if (data->uri_found_rc != SMFIS_CONTINUE)
+			break;
 	}
 
 	return SMFIS_CONTINUE;
@@ -1125,29 +1187,8 @@ filterEndMessage(SMFICTX *ctx)
 		return SMFIS_CONTINUE;
 
 	/* Terminate MIME parsing. */
-	if (!data->stop_uri_scanning && mimeNextCh(data->mime, EOF) == 0) {
-		URI *uri;
-		sfsistat rc;
-
-		if ((uri = uriMimeGetUri(data->mime)) != NULL) {
-			smfLog(SMF_LOG_DIALOG, TAG_FORMAT "checking uri=%s", TAG_ARGS, TextNull(uri->host));
-
-			if ((rc = testURI(data, uri)) == SMFIS_CONTINUE) {
-				if (uri->query == NULL)
-					rc = testList(data, uri->path, "&");
-				else if ((rc = testList(data, uri->query, "&")) == 0)
-					rc = testList(data, uri->query, "/");
-				if (rc == SMFIS_CONTINUE)
-					rc = testList(data, uri->path, "/");
-			}
-
-			if (rc == SMFIS_CONTINUE && uriGetSchemePort(uri) == 25) {
-				rc = testMail(data, uri->uriDecoded);
-			}
-
-			uriMimeFreeUri(data->mime);
-		}
-	}
+	if (!data->stop_uri_scanning)
+		(void) mimeNextCh(data->mime, EOF);
 
 	if (data->reply[0] != '\0') {
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "%s", TAG_ARGS, data->reply);
@@ -1216,7 +1257,7 @@ filterClose(SMFICTX *ctx)
 		VectorDestroy(data->mail_tested);
 		VectorDestroy(data->uri_tested);
 		VectorDestroy(data->ns_tested);
-		uriMimeFree(data->mime);
+		mimeFree(data->mime);
 		pdqClose(data->pdq);
 		free(data);
 	}
@@ -1228,6 +1269,7 @@ filterClose(SMFICTX *ctx)
 	return SMFIS_CONTINUE;
 }
 
+#ifdef HAVE_SMFI_VERSION
 static sfsistat
 filterUnknown(SMFICTX * ctx, const char *command)
 {
@@ -1296,6 +1338,7 @@ error1:
 error0:
 	return rc;
 }
+#endif /* HAVE_SMFI_VERSION */
 
 /***********************************************************************
  ***  Milter Definition Block
