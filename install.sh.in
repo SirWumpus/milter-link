@@ -34,7 +34,7 @@ unalias hasCommand >/dev/null 2>&1
 hasCommand()
 {
 	case $UNAME in
-	Linux|OpenBSD|FreeBSD)
+	Linux|*BSD)
 		which "$1"
 		return $?
 		;;
@@ -101,7 +101,7 @@ elif test -d /usr/local/etc/rc.d ; then
 	# FreeBSD
 	startup_script="/usr/local/etc/rc.d/${MILTER}.sh"
 else
-	# OpenBSD policy is for root to install startup scripts by hand.
+	# OpenBSD & NetBSD policy is for root to install startup scripts by hand.
 	startup_script='NO'
 fi
 
