@@ -419,6 +419,7 @@ STAT_DECLARE(transactions);
 STAT_DECLARE(access_bl);
 STAT_DECLARE(access_wl);
 STAT_DECLARE(access_other);
+STAT_DECLARE(helo_fail);
 STAT_DECLARE(link_fail);
 STAT_DECLARE(mail_fail);
 STAT_DECLARE(origin_fail);
@@ -454,6 +455,7 @@ static Stat *stat_table[SMF_MAX_MULTILINE_REPLY] = {
 	&stat_access_wl,
 	&stat_access_other,
 	&stat_link_fail,
+	&stat_helo_fail,
 	&stat_mail_fail,
 	&stat_origin_fail,
 	&stat_uri_fail,
@@ -913,6 +915,7 @@ static sfsistat
 filterHelo(SMFICTX * ctx, char *helohost)
 {
 	workspace data;
+	smdb_code access;
 
 	if ((data = (workspace) smfi_getpriv(ctx)) == NULL)
 		return smfNullWorkspaceError("filterHelo");
@@ -927,8 +930,45 @@ filterHelo(SMFICTX * ctx, char *helohost)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterHelo(%lx, '%s')", TAG_ARGS, (long) ctx, TextNull(helohost));
 
-	if (opt_uri_bl_helo.value && testString(data, helohost, mime_test_uri) == SMFIS_REJECT)
+	access = smfAccessClient(&data->work, MILTER_NAME "-helo:", helohost, NULL, NULL, NULL);
+	switch (access) {
+	case SMDB_ACCESS_ERROR:
+		statCount(&stat_error);
+		return SMFIS_REJECT;
+
+	case SMDB_ACCESS_REJECT:
+		/* Report this mail error ourselves, because sendmail/milter API
+		 * fails to report xxfi_connect handler rejections.
+		 */
+		statCount(&stat_access_bl);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "HELO %s blocked", TAG_ARGS, helohost);
+		return smfReply(&data->work, 550, "5.7.1", "HELO %s blocked", helohost);
+
+	case SMDB_ACCESS_OK:
+		statCount(&stat_access_wl);
+		smfLog(SMF_LOG_TRACE, TAG_FORMAT "HELO %s white listed", TAG_ARGS, helohost);
+		data->work.skipConnection = 1;
+
+		/* Don't use SMFIS_ACCEPT, otherwise we can't do STAT
+		 * from localhost.
+		 */
+		return SMFIS_CONTINUE;
+
+	case SMDB_ACCESS_TEMPFAIL:
+		statCount(&stat_tempfail);
+		smfLog(SMF_LOG_ERROR, TAG_FORMAT "HELO %s temp.failed", TAG_ARGS, helohost);
+		return smfReply(&data->work, 450, "4.7.1", "HELO %s blocked", helohost);
+
+	default:
+		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "HELO %s unknown access value", TAG_ARGS, helohost);
+		statCount(&stat_access_other);
+		break;
+	}
+
+	if (opt_uri_bl_helo.value && testString(data, helohost, mime_test_uri) == SMFIS_REJECT) {
+		statAddValue(&stat_helo_fail, 1);
 		return smfReply(&data->work, 550, NULL, "%s", data->reply);
+	}
 
 	return SMFIS_CONTINUE;
 }

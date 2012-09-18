@@ -17,6 +17,12 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.6.1--
+
+   *	Requires LibSnert 1.75.18
+
+   +	Add support for milter-link-Helo: B/W tags. Requested by Alex Broens.
+
 --1.6.0--
 
    *	Requires LibSnert 1.75.8

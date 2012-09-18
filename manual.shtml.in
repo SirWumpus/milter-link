@@ -316,6 +316,14 @@ In the case of a +detailed mail address, the left hand side of the +detail is us
 <span class="note">Note that Sendmail also has special semantics for <span class="tag">From:</span>.</span>
 </dd>
 
+<a name="tag_helo"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Helo:</span>domain</dt>
+<dd>
+Used to black or white list an SMTP client based on the HELO / EHLO argument. 
+This tag is not recommended for white listing as the HELO argument can be 
+too easily falsified. 
+</dd>
+
 <a name="tag_to"></a>
 <dt><span class="tag">@PACKAGE_NAME@-To:</span>mail</dt>
 <dt><span class="tag">Spam:</span>mail</dt>

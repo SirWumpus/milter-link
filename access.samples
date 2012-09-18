@@ -15,6 +15,7 @@ milter-link-body:localdomain			OK
 #milter-link-body:163.com			REJECT
 #milter-link-body:2o7.net			REJECT
 #milter-link-body:4at1.com			REJECT
+milter-link-body:4sq.com			OK
 milter-link-body:about.com			OK
 milter-link-body:adelphia.net			OK
 milter-link-body:adobe.com			OK
@@ -51,7 +52,7 @@ milter-link-body:citizensbank.com		OK
 milter-link-body:cjb.net			OK
 #milter-link-body:classmates.com		REJECT
 milter-link-body:click-url.com			OK
-milter-link-body:clickbank.net			OK
+#milter-link-body:clickbank.net			REJECT
 milter-link-body:cnet.com			OK
 milter-link-body:cnn.com			OK
 milter-link-body:com.com			OK
@@ -87,6 +88,7 @@ milter-link-body:excite.com			OK
 milter-link-body:exct.net			OK
 milter-link-body:f-secure.com			OK
 #milter-link-body:flowgo.com			REJECT
+milter-link-body:foursquare.com			OK
 milter-link-body:free.fr			OK
 milter-link-body:freebsd.org			OK
 milter-link-body:freelotto.com			OK
@@ -147,6 +149,7 @@ milter-link-body:netzero.net			OK
 milter-link-body:norman.com			OK
 milter-link-body:nytimes.com			OK
 #milter-link-body:optonline.net			REJECT
+milter-link-body:openxmlformats.org		OK
 milter-link-body:osdn.com			OK
 #milter-link-body:overstock.com			REJECT
 milter-link-body:p0.com				OK
@@ -188,6 +191,7 @@ milter-link-body:suntrust.com			OK
 milter-link-body:surbl.org			OK
 milter-link-body:symantec.com			OK
 milter-link-body:sympatico.ca			OK
+milter-link-body:t.co				OK
 milter-link-body:t-online.de			OK
 milter-link-body:tails.nl			OK
 milter-link-body:telus.net			OK
