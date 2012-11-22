@@ -642,7 +642,7 @@ testURI(workspace data, URI *uri)
 	}
 
 	/* Be sure to apply the correct access lookup. */
-	if (0 < spanIP(uri->host)) {
+	if (0 < spanIP((unsigned char *) uri->host)) {
 		ip = uri->host;
 		host = NULL;
 	} else {
@@ -660,6 +660,12 @@ testURI(workspace data, URI *uri)
 		snprintf(data->reply, sizeof (data->reply), "rejected URL host %s", uri->host);
 		data->policy = 'r';
 		rc = SMFIS_REJECT;
+		goto error0;
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> discard", TAG_ARGS, uri->uri);
+		data->policy = 'd';
+		rc = SMFIS_DISCARD;
 		goto error0;
 	}
 
@@ -871,7 +877,7 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
 		statAddValue(&stat_connect_active, 1);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "client %s [%s] white listed", TAG_ARGS, client_name, data->work.client_addr);
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "client %s [%s] white listed", TAG_ARGS, client_name, data->work.client_addr);
 		data->work.skipConnection = 1;
 
 		/* Don't use SMFIS_ACCEPT, otherwise we can't do STAT
@@ -883,6 +889,11 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "client %s [%s] temp.failed", TAG_ARGS, client_name, data->work.client_addr);
 		return smfReply(&data->work, 450, "4.7.1", "connection %s [%s] blocked", client_name, data->work.client_addr);
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "client %s [%s] discard", TAG_ARGS, client_name, data->work.client_addr);
+		statCount(&stat_discard);
+		return SMFIS_DISCARD;
 
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "client %s [%s] unknown access value", TAG_ARGS, client_name, data->work.client_addr);
@@ -946,7 +957,7 @@ filterHelo(SMFICTX * ctx, char *helohost)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "HELO %s white listed", TAG_ARGS, helohost);
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "HELO %s white listed", TAG_ARGS, helohost);
 		data->work.skipConnection = 1;
 
 		/* Don't use SMFIS_ACCEPT, otherwise we can't do STAT
@@ -958,6 +969,11 @@ filterHelo(SMFICTX * ctx, char *helohost)
 		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "HELO %s temp.failed", TAG_ARGS, helohost);
 		return smfReply(&data->work, 450, "4.7.1", "HELO %s blocked", helohost);
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "HELO %s discard", TAG_ARGS, helohost);
+		statCount(&stat_discard);
+		return SMFIS_DISCARD;
 
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "HELO %s unknown access value", TAG_ARGS, helohost);
@@ -1016,7 +1032,7 @@ filterMail(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "sender %s white listed", TAG_ARGS, args[0]);
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "sender %s white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
@@ -1024,6 +1040,11 @@ filterMail(SMFICTX *ctx, char **args)
 		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "sender %s temp.failed", TAG_ARGS, args[0]);
 		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "sender %s discard", TAG_ARGS, args[0]);
+		statCount(&stat_discard);
+		return SMFIS_DISCARD;
 
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "sender %s unknown access value", TAG_ARGS, args[0]);
@@ -1044,7 +1065,7 @@ filterMail(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, TextNull(auth_authen));
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "authenticated id <%s> white listed", TAG_ARGS, TextNull(auth_authen));
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
@@ -1052,6 +1073,11 @@ filterMail(SMFICTX *ctx, char **args)
 		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "authenticated id <%s> temp.failed", TAG_ARGS, TextNull(auth_authen));
 		return smfReply(&data->work, 450, "4.7.1", "sender blocked");
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "authenticated id <%s> discard", TAG_ARGS, TextNull(auth_authen));
+		statCount(&stat_discard);
+		return SMFIS_DISCARD;
 
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "authenticated id <%s> unknown access value", TAG_ARGS, TextNull(auth_authen));
@@ -1087,7 +1113,7 @@ filterRcpt(SMFICTX *ctx, char **args)
 
 	case SMDB_ACCESS_OK:
 		statCount(&stat_access_wl);
-		smfLog(SMF_LOG_TRACE, TAG_FORMAT "recipient %s white listed", TAG_ARGS, args[0]);
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "recipient %s white listed", TAG_ARGS, args[0]);
 		data->work.skipMessage = 1;
 		return SMFIS_ACCEPT;
 
@@ -1095,6 +1121,11 @@ filterRcpt(SMFICTX *ctx, char **args)
 		statCount(&stat_tempfail);
 		smfLog(SMF_LOG_ERROR, TAG_FORMAT "recipient %s temp.failed", TAG_ARGS, args[0]);
 		return smfReply(&data->work, 450, "4.7.1", "recipient blocked");
+
+	case SMDB_ACCESS_DISCARD:
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "recipient %s discard", TAG_ARGS, args[0]);
+		statCount(&stat_discard);
+		return SMFIS_DISCARD;
 
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "recipient %s unknown access value", TAG_ARGS, args[0]);
