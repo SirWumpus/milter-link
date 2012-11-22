@@ -663,7 +663,7 @@ testURI(workspace data, URI *uri)
 		goto error0;
 
 	case SMDB_ACCESS_DISCARD:
-		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI <%s> discard", TAG_ARGS, uri->uri);
+		snprintf(data->reply, sizeof (data->reply), "discarded for \"%s\"", uri->uri);
 		data->policy = 'd';
 		rc = SMFIS_DISCARD;
 		goto error0;
