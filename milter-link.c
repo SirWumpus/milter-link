@@ -627,7 +627,8 @@ testURI(workspace data, URI *uri)
 
 	if (0 < opt_uri_max_test.value
 	&& opt_uri_max_test.value <= VectorLength(data->uri_tested)) {
-		smfLog(SMF_LOG_INFO, TAG_FORMAT "uri-max-test reached", TAG_ARGS);
+		if (!data->stop_uri_scanning)
+			smfLog(SMF_LOG_INFO, TAG_FORMAT "uri-max-test reached", TAG_ARGS);
 		data->stop_uri_scanning = 1;
 		return SMFIS_CONTINUE;
 	}
