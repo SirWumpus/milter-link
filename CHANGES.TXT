@@ -17,6 +17,13 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.6.2--
+
+   +	Added support for DISCARD action in access-db.
+
+   !	Silence repeated log messages about "uri-max-test reached".
+	Reported by Alex Broens.
+
 --1.6.1--
 
    *	Requires LibSnert 1.75.18
