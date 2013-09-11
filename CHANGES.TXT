@@ -17,6 +17,11 @@ is no set schedule for releases.
    	Requested by Alex Broens.
 
 
+--1.6.3--
+
+   !	Silence repeated log messages about "mail-bl-max reached".
+	Reported by Alex Broens.
+
 --1.6.2--
 
    +	Added support for DISCARD action in access-db.

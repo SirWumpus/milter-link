@@ -143,6 +143,7 @@ typedef struct {
 	int hasReport;				/* per message */
 	int hasSubject;				/* per message */
 	int stop_uri_scanning;			/* per message */
+	int stop_mail_scanning;			/* per message */
 	sfsistat uri_found_rc;			/* per message */
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
 	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
@@ -540,7 +541,9 @@ testMail(workspace data, const char *mail)
 
 	if (0 < opt_mail_bl_max.value
 	&& opt_mail_bl_max.value <= VectorLength(data->mail_tested)) {
-		smfLog(SMF_LOG_INFO, TAG_FORMAT "mail-bl-max reached", TAG_ARGS);
+		if (!data->stop_mail_scanning)
+			smfLog(SMF_LOG_INFO, TAG_FORMAT "mail-bl-max reached", TAG_ARGS);
+		data->stop_mail_scanning = 1;
 		return SMFIS_CONTINUE;
 	}
 
@@ -1009,6 +1012,7 @@ filterMail(SMFICTX *ctx, char **args)
 	data->reply[0] = '\0';
 	data->subject[0] = '\0';
 	data->stop_uri_scanning = 0;
+	data->stop_mail_scanning = 0;
 	data->uri_found_rc = SMFIS_CONTINUE;
 	VectorRemoveAll(data->ns_tested);
 	VectorRemoveAll(data->uri_tested);
