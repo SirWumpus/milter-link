@@ -319,9 +319,9 @@ In the case of a +detailed mail address, the left hand side of the +detail is us
 <a name="tag_helo"></a>
 <dt><span class="tag">@PACKAGE_NAME@-Helo:</span>domain</dt>
 <dd>
-Used to black or white list an SMTP client based on the HELO / EHLO argument. 
-This tag is not recommended for white listing as the HELO argument can be 
-too easily falsified. 
+Used to black or white list an SMTP client based on the HELO / EHLO argument.
+This tag is not recommended for white listing as the HELO argument can be
+too easily falsified.
 </dd>
 
 <a name="tag_to"></a>
@@ -575,6 +575,14 @@ Some additional examples:
 <a name="opt_daemon"></a>
 <dt><span class="syntax">+daemon</span></dt>
 <dd>Start as a background daemon or foreground application.
+</dd>
+
+<a name="opt_date_required"></a>
+<dt><span class="syntax">date-required=</span><span class="param">0</span></dt>
+<dd>
+Set to one (1) to require a Date header; two (2) requires the header
+and that it conform to the RFC 5322 date-time format.  Zero (0) disables
+the requirement (default).
 </dd>
 
 <a name="opt_domain_bl"></a>

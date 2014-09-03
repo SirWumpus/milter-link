@@ -11,7 +11,7 @@
 .POSIX :
 
 MILTER 		= @PACKAGE_TARNAME@
-VERSION		= @PACKAGE_VERSION@
+VERSION		= @PACKAGE_VERSION@.${MILTER_BUILD}
 
 ########################################################################
 ### Pick one that best suits your system.
@@ -33,16 +33,21 @@ A = .@LIBEXT@
 O = .@OBJEXT@
 E = @EXEEXT@
 
-#
-# Paths for supporting headers and libraries.
-#
-top_srcdir	= @top_srcdir@
-abs_top_srcdir 	= @top_srcdir@
-SNERT_TARDIR	= @rel_tardir@
-SNERT_INCDIR	= @rel_incdir@
-SNERT_LIBDIR	= @rel_libdir@
+VPATH		:= @srcdir@
+srcdir		:= @srcdir@
+top_srcdir	:= @top_srcdir@
+abs_srcdir	:= @abs_srcdir@
 
-TARFILE	= ${MILTER}-${VERSION}.tar.gz
+builddir	:= @builddir@
+top_builddir	:= @top_builddir@
+abs_builddir	:= @abs_builddir@
+
+SNERT_TARDIR	:= @rel_tardir@
+SNERT_INCDIR	:= @rel_incdir@
+SNERT_LIBDIR	:= @rel_libdir@
+
+TARFILE		 = ${MILTER}-${VERSION}.tar.gz
+TGZ		:= ${SNERT_TARDIR}/${TARFILE}
 
 CC		:= @CC@
 CC_E		:= @CC_E@
@@ -55,7 +60,7 @@ RANLIB		:= @RANLIB@
 MD5SUM		:= @MD5SUM@
 AUTOCONF	:= @AUTOCONF@
 
-MILTER_BUILD	:=`cat BUILD_ID.TXT`
+MILTER_BUILD	:= `cat ${abs_srcdir}/BUILD_ID.TXT`
 
 LIBSNERT 	:= @LIBSNERT@
 LIB_RT 		:= @HAVE_LIB_RT@
@@ -88,7 +93,7 @@ LIBS	:= @LIBS@ ${LIB_MILTER} ${LIB_SQLITE3} ${LIB_DB} ${LIB_SEM} ${LIB_PTHREAD}
 build : ${MILTER}
 	@echo
 	@echo '***************************************************************'
-	@echo Build ${VERSION}.${MILTER_BUILD} DONE
+	@echo Build ${VERSION} DONE
 	@echo '***************************************************************'
 	@echo
 
@@ -151,14 +156,14 @@ pack: next-id tar
 
 tar: MANIFEST.TXT configure manual.shtml
 	-rm -rf $(SNERT_TARDIR)/$(TARFILE) ${MILTER}.md5 autom4te.cache configure.lineno
-	echo '${VERSION}.'`cat BUILD_ID.TXT` >VERSION.TXT
-	echo '${MILTER}-${VERSION}.tar.gz' >FILE.TXT
-	tar -C ${SNERT_TARDIR} ${TAR_I} MANIFEST.TXT -zcf ${SNERT_TARDIR}/${TARFILE}
+	echo '${VERSION}' >VERSION.TXT
+	echo '${TARFILE}' >FILE.TXT
+	tar -C ${SNERT_TARDIR} ${TAR_I} MANIFEST.TXT -zcf ${TGZ}
 	@echo
 	@echo '***************************************************************'
 	@cd ${SNERT_TARDIR}; ${MD5SUM} ${TARFILE} | tee com/snert/src/${MILTER}/${MILTER}.md5
 	@echo '***************************************************************'
-	@cd $(SNERT_TARDIR); wc -c $(TARFILE)
+	@cd $(SNERT_TARDIR); wc -c ${TARFILE}
 	@echo '***************************************************************'
 	@echo
 

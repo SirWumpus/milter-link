@@ -111,6 +111,7 @@
 #include <com/snert/lib/util/Text.h>
 #include <com/snert/lib/util/getopt.h>
 #include <com/snert/lib/util/uri.h>
+#include <com/snert/lib/util/convertDate.h>
 #include <com/snert/lib/sys/sysexits.h>
 
 #if LIBSNERT_MAJOR < 1 || LIBSNERT_MINOR < 75
@@ -139,6 +140,7 @@ static smfInfo milter;
 typedef struct {
 	smfWork work;
 	int policy;				/* per message */
+	int hasDate;				/* per message */
 	int hasPass;				/* per message */
 	int hasReport;				/* per message */
 	int hasSubject;				/* per message */
@@ -174,6 +176,13 @@ static Option opt_links_test	= { "links-test",	"-",			"Verify HTTP links are val
 
 static Option opt_links_timeout	= { "links-timeout",	"60",			"Socket timeout used when testing HTTP links." };
 
+static const char usage_date_required[] =
+  "Set to one (1) to require a Date header; two (2) requires the header\n"
+"# and that it conform to the RFC 5322 date-time format.  Zero (0) disables\n"
+"# the requirement (default).\n"
+"#"
+;
+static Option opt_date_required	= { "date-required",	"0",			usage_date_required };
 
 static const char usage_domain_bl[] =
   "A list of domain black list suffixes to consult, like .dbl.spamhaus.org.\n"
@@ -368,6 +377,7 @@ static Option *optTable[] = {
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
 	&opt_info,
+	&opt_date_required,
 	&opt_domain_bl,
 	&opt_mail_bl,
 	&opt_mail_bl_domains,
@@ -1006,7 +1016,9 @@ filterMail(SMFICTX *ctx, char **args)
 	if ((data->work.qid = smfi_getsymval(ctx, "i")) == NULL)
 		data->work.qid = smfNoQueue;
 
+	data->hasDate = 0;
 	data->hasPass = 0;
+	data->hasReport = 0;
 	data->hasSubject = 0;
 	data->policy = '\0';
 	data->reply[0] = '\0';
@@ -1167,6 +1179,18 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 		data->hasPass = 1;
 	} else if (TextMatch(name, X_MILTER_REPORT, -1, 1)) {
 		data->hasReport = 1;
+	} else if (TextMatch(name, "Date", -1, 1)) {
+		time_t gmt;
+		const char *stop;
+
+		/* convertDate parses several formats: RFC 5322, ctime, ISO 8601.
+		 * The last two and their variants are invalid for a Date header,
+		 * but allowed for our needs, which is a parsable Date header is
+		 * present.
+		 */
+		data->hasDate++;
+		if (convertDate(value, &gmt, &stop) && *stop == '\0')
+			data->hasDate++;	
 	}
 
 	/* Feed the header to the MIME parser in order to setup state. */
@@ -1269,6 +1293,17 @@ filterEndMessage(SMFICTX *ctx)
 	/* Terminate MIME parsing. */
 	if (!data->stop_uri_scanning)
 		(void) mimeNextCh(data->mime, EOF);
+
+	if (data->hasDate < opt_date_required.value) {
+		switch (data->hasDate) {
+		case 1:
+			(void) snprintf(data->reply, sizeof (data->reply), "invalid Date header syntax");
+			break;
+		case 0:
+			(void) snprintf(data->reply, sizeof (data->reply), "missing Date header");
+			break;
+		}
+	}
 
 	if (data->reply[0] != '\0') {
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "%s", TAG_ARGS, data->reply);
@@ -1497,38 +1532,6 @@ printVersion(void)
 #ifdef _BUILT
 	printf("Built on " _BUILT "\n");
 #endif
-}
-
-#define LINE_WRAP 70
-
-void
-printVar(int columns, const char *name, const char *value)
-{
-	int length;
-	Vector list;
-	const char **args;
-
-	if (columns <= 0)
-		printf("%s=\"%s\"\n",  name, value);
-	else if ((list = TextSplit(value, " \t", 0)) != NULL && 0 < VectorLength(list)) {
-		args = (const char **) VectorBase(list);
-
-		length = printf("%s=\"'%s'", name, *args);
-		for (args++; *args != NULL; args++) {
-			/* Line wrap. */
-			if (columns <= length + strlen(*args) + 4) {
-				(void) printf("\n\t");
-				length = 8;
-			}
-			length += printf(" '%s'", *args);
-		}
-		if (columns <= length + 1) {
-			(void) printf("\n");
-		}
-		(void) printf("\"\n");
-
-		VectorDestroy(list);
-	}
 }
 
 void
