@@ -577,6 +577,39 @@ Some additional examples:
 <dd>Start as a background daemon or foreground application.
 </dd>
 
+<a name="opt_date_policy"></a>
+<dt><span class="syntax">date-policy=</span><span class="param">reject</span></dt>
+<dd>
+If the date-required check fails, 
+then apply one of the following policies:
+
+<blockquote>
+<table border="0" cellspacing="0" cellpadding="3" width="100%">
+<tr valign="top" align="justify">
+	<td class="tline bline param" width="40%">&nbsp;none</td>
+	<td class="tline bline" width="60%">Do nothing.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline param">&nbsp;tag</td>
+	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline param">&nbsp;quarantine</td>
+	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline param">&nbsp;reject</td>
+	<td class="bline">Reject the message.</td>
+</tr>
+<tr valign="top" align="justify">
+	<td class="bline param">&nbsp;discard</td>
+	<td class="bline">Discard the message.</td>
+</tr>
+</table>
+</blockquote>
+</dd>
+
+
 <a name="opt_date_required"></a>
 <dt><span class="syntax">date-required=</span><span class="param">0</span></dt>
 <dd>
@@ -591,7 +624,8 @@ the requirement (default).
 A list of domain black list suffixes to consult, like .dbl.spamhaus.org.
 The host or domain name found in a URI is checked against these DNS black
 lists. These black lists are assumed to use wildcards entries, so only a
-single lookup is done. IP-as-domain in a URI are ignored.
+single lookup is done. IP-as-domain in a URI are ignored. See also
+<a href="#opt_uri_bl_policy">uri-bl-policy</a>.
 </dd>
 
 <a name="opt_dns_list_log_file"></a>

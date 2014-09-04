@@ -16,6 +16,10 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--1.6.5--
+
+   +	Forgot to add a date-policy option for date-required.
+
 --1.6.4--
 
    +	Added date-required option to test for the presence and

@@ -184,11 +184,18 @@ static const char usage_date_required[] =
 ;
 static Option opt_date_required	= { "date-required",	"0",			usage_date_required };
 
+static const char usage_date_policy[] =
+  "Policy applied when date-required fails. Specify one of none, tag,\n"
+"# quarantine, reject, or discard.\n"
+"#"
+;
+static Option opt_date_policy	= { "date-policy",	"reject",		usage_date_policy };
+
 static const char usage_domain_bl[] =
   "A list of domain black list suffixes to consult, like .dbl.spamhaus.org.\n"
 "# The host or domain name found in a URI is checked against these DNS black\n"
 "# lists. These black lists are assumed to use wildcards entries, so only a\n"
-"# single lookup is done. IP-as-domain in a URI are ignored.\n"
+"# single lookup is done. IP-as-domain in a URI are ignored. See uri-bl-policy.\n"
 "#"
 ;
 static Option opt_domain_bl	= { "domain-bl",	"",			usage_domain_bl };
@@ -374,11 +381,12 @@ static Option *optTable[] = {
 #ifdef DROPPED_ADD_HEADERS
 	&optAddHeaders,
 #endif
+	&opt_date_policy,
+	&opt_date_required,
 	DNS_LIST_OPTIONS_TABLE,
 	PDQ_OPTIONS_TABLE,
-	&opt_info,
-	&opt_date_required,
 	&opt_domain_bl,
+	&opt_info,
 	&opt_mail_bl,
 	&opt_mail_bl_domains,
 	&opt_mail_bl_headers,
@@ -1188,8 +1196,9 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 		 * but allowed for our needs, which is a parsable Date header is
 		 * present.
 		 */
+		stop = value;
 		data->hasDate++;
-		if (convertDate(value, &gmt, &stop) && *stop == '\0')
+		if (convertDate(value, &gmt, &stop) == 0 && *stop == '\0')
 			data->hasDate++;	
 	}
 
@@ -1294,13 +1303,18 @@ filterEndMessage(SMFICTX *ctx)
 	if (!data->stop_uri_scanning)
 		(void) mimeNextCh(data->mime, EOF);
 
-	if (data->hasDate < opt_date_required.value) {
+	if (data->policy == '\0' && data->hasDate < opt_date_required.value) {
+		data->policy = *opt_date_policy.string;
 		switch (data->hasDate) {
 		case 1:
-			(void) snprintf(data->reply, sizeof (data->reply), "invalid Date header syntax");
+			(void) snprintf(data->reply, sizeof (data->reply), "invalid RFC 5322 Date header");
 			break;
 		case 0:
-			(void) snprintf(data->reply, sizeof (data->reply), "missing Date header");
+			(void) snprintf(data->reply, sizeof (data->reply), "missing Date header, required by RFC 5322 section 3.6");
+			break;
+		default:
+			/* We should never reach this case. */
+			(void) snprintf(data->reply, sizeof (data->reply), "Date header error (%d)", data->hasDate);
 			break;
 		}
 	}
