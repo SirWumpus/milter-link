@@ -11,10 +11,18 @@ is no set schedule for releases.
    ?	Add http-proxy= option for +test-links. Requested by Quentin
    	Campbell.
 
-   ?	Add support for list codes (vs. bit masks), a la SpamHaus.
-
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
+
+--2.0.0--
+
+   *	Requires LibSnert 1.75.41
+
+   +	Add support finally for SpamHaus IP return codes.  Requested
+   	by Alex Broens.
+
+   +	Add access-check-headers and access-check-body options.
+   	Commissioned by Alex Broens.
 
 --1.6.5--
 
