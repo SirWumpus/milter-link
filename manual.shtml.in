@@ -663,16 +663,6 @@ and that it conform to the RFC 5322 date-time format.  Zero (0) disables
 the requirement (default).
 </dd>
 
-<a name="opt_domain_bl"></a>
-<dt><span class="syntax">domain-bl=</span><span class="param">.dbl.spamhaus.org</span></dt>
-<dd>
-Specify a <a href="#suffix_list">suffix list</a>.
-The host or domain name found in a URI is checked against these DNS black
-lists. These black lists are assumed to use wildcards entries, so only a
-single lookup is done. IP-as-domain in a URI are ignored. See also
-<a href="#opt_uri_bl_policy">uri-bl-policy</a>.
-</dd>
-
 <a name="opt_dns_list_log_file"></a>
 <dt><span class="syntax">dns-list-log-file=</span><span class="param"></span></dt>
 <dd>
@@ -699,6 +689,16 @@ Maximum timeout in seconds for a DNS query.
 <dd>
 Set true to query NS servers in round robin order. Set false to
 query all the NS servers in parallel.
+</dd>
+
+<a name="opt_domain_bl"></a>
+<dt><span class="syntax">domain-bl=</span><span class="param">.dbl.spamhaus.org</span></dt>
+<dd>
+Specify a <a href="#suffix_list">suffix list</a>.
+The host or domain name found in a URI is checked against these DNS black
+lists. These black lists are assumed to use wildcards entries, so only a
+single lookup is done. IP-as-domain in a URI are ignored. See also
+<a href="#opt_uri_bl_policy">uri-bl-policy</a>.
 </dd>
 
 <a name="opt_file"></a>
@@ -1368,7 +1368,7 @@ milter:milter before starting the accept socket thread.
 
 <!-- License Agreement -->
 
-<h3>License Agreement 1.8</h3>
+<h3>License Agreement 1.9</h3>
 <p>
 SNERTSOFT &amp; CO. ARE WILLING TO LICENSE THE SOFTWARE IDENTIFIED ABOVE TO YOU
 ONLY UPON THE CONDITION THAT YOU ACCEPT ALL OF THE TERMS CONTAINED
@@ -1402,8 +1402,7 @@ any updates or error corrections, and its derivative works.
  shares or beneficial ownership of such entity.
 	</p></li>
 	<li><p>
-``SnertSoft'' means Anthony C. Howe situated in Cannes, France
-(SIRET #489 259 937 00014).
+``SnertSoft'' means Anthony C. Howe situated in Montreal, Canada.
 	</p></li>
 	<li><p>
 ``SnertSoft &amp; Co.'' means SnertSoft and all authorised &amp;

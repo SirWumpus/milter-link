@@ -202,13 +202,11 @@ static const char usage_domain_bl[] =
 "# single lookup is done. IP-as-domain in a URI are ignored. See uri-bl-policy.\n"
 "#"
 ;
-static Option opt_domain_bl	= { "domain-bl",	"",			usage_domain_bl };
+static Option opt_domain_bl	= { "domain-bl",	"dbl.spamhaus.org",	usage_domain_bl };
 
 static const char usage_uri_bl[] =
   "A list of domain name black list suffixes to consult, like .multi.surbl.org.\n"
 "# The domain name found in a URI is checked against these DNS black lists.\n"
-"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
-"# is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
 static Option opt_uri_bl	= { "uri-bl",		".multi.surbl.org;.black.uribl.com",	usage_uri_bl };
@@ -244,8 +242,6 @@ static const char usage_uri_a_bl[] =
   "A list of IP black list suffixes to consult, like zen.spamhaus.org.\n"
 "# The host or domain name found in a URI is used to find its DNS A record\n"
 "# and IP address, which is then checked against these IP DNS black lists.\n"
-"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
-"# is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
 static Option opt_uri_a_bl	= { "uri-a-bl",		"",			usage_uri_a_bl };
@@ -254,8 +250,7 @@ static const char usage_uri_ns_bl[] =
   "A list of host name and/or domain name black list suffixes to consult. The\n"
 "# domain name found in a URI is used to find its DNS NS records; the NS host\n"
 "# names are checked against these host name and/or domain name DNS black\n"
-"# lists. Aggregate lists are supported using suffix/mask. Without a /mask,\n"
-"# suffix is the same as suffix/0x00FFFFFE.\n"
+"# lists.\n"
 "#"
 ;
 static Option opt_uri_ns_bl	= { "uri-ns-bl",	"",			usage_uri_ns_bl };
@@ -264,8 +259,6 @@ static const char usage_uri_ns_a_bl[] =
   "A comma or semi-colon separated list of IP black list suffixes to consult.\n"
 "# The host or domain name found in a URI is used to find its DNS NS records\n"
 "# and IP address, which are then checked against these IP black lists.\n"
-"# Aggregate lists are supported using suffix/mask. Without a /mask, suffix\n"
-"# is the same as suffix/0x00FFFFFE.\n"
 "#"
 ;
 static Option opt_uri_ns_a_bl	= { "uri-ns-a-bl",	"",			usage_uri_ns_a_bl };
@@ -281,9 +274,7 @@ static Option opt_uri_bl_policy	= { "uri-bl-policy",	"reject",		usage_uri_bl_pol
 static const char usage_mail_bl[] =
   "A list of mail address black list suffixes to consult. The MAIL FROM:\n"
 "# address and mail addresses found in select headers and the message are MD5\n"
-"# hashed, which are then checked against these black lists. Aggregate lists\n"
-"# are supported using suffix/mask. Without a /mask, suffix is the same as\n"
-"# suffix/0x00FFFFFE.\n"
+"# hashed, which are then checked against these black lists.\n"
 "# "
 ;
 Option opt_mail_bl		= { "mail-bl",		"",			usage_mail_bl };
