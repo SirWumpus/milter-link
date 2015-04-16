@@ -150,12 +150,11 @@ typedef struct {
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
 	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
 	const char *mime_string_name;		/* per string (headers, body) */
-	ParsePath *from;			/* per message */
 
 	PDQ *pdq;				/* per connection */
 	Mime *mime;				/* per connection, reset per message */
-	Vector mails;				/* per connection, reset per message */
-	Vector rcpts;				/* per connection, reset per message */
+	Vector senders;				/* per connection, reset per message */
+	Vector recipients;			/* per connection, reset per message */
 	Vector ns_tested;			/* per connection, reset per message */
 	Vector uri_tested;			/* per connection, reset per message */
 	Vector mail_tested;			/* per connection */
@@ -367,19 +366,19 @@ static const char usage_info[] =
 Option opt_info			= { "info", 			NULL,		usage_info };
 
 static const char usage_access_check_headers[] =
-  "When enabled this option will perform extra access map lookups\n"
-"# based on the Sender, From, To, and Cc headers using the SAME lookup\n"
-"# tags currently used for SMTP envelope information as described by\n"
-"# access-db. This allows special B/W list configurations.\n"
+  "When enabled, this option will perform extra access-db lookups\n"
+"# with the Sender, From, To, and Cc headers using milter-link-from:\n"
+"# milter-link-to:, and combo tags, as described by access-db. This\n"
+"# allows special B/W list configurations.\n"
 "#"
 ;
 Option opt_access_check_headers	= { "access-check-headers",	"-",		usage_access_check_headers };
 
 static const char usage_access_check_body[] =
-  "When enabled this option will perform supplemental access-db lookups\n"
-"# for milter-link-body family.  For each body URI, IP, domain, or\n"
-"# mail address would apply the supplemental lookups before the\n"
-"# base body ones.  This allows special B/W list configurations.\n"
+  "When enabled, this option will perform supplemental milter-link-body\n"
+"# combo tag lookups for each URI, IP, domain, or mail address found in\n"
+"# the message body. This allows special B/W list configurations.\n"
+"#"
 ;
 Option opt_access_check_body	= { "access-check-body",	"-",		usage_access_check_body };
 
@@ -694,7 +693,7 @@ access_rcpt(workspace data, const char *value, long parseFlags)
 }
 
 static sfsistat
-access_body(workspace data, const char *ip, const char *host, const char *tag, const char *mail)
+access_body_combo(workspace data, const char *ip, const char *host, const char *tag, const char *mail)
 {
 	const char *uri;
 	smdb_code access;
@@ -748,10 +747,8 @@ mime_access_headers_mail(URI *uri, void *_data)
 		TAG_ARGS, __func__, uri, uri->uriDecoded, _data
 	);
 
-	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->mails, copy))
+	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->senders, copy))
 		free(copy);
-
-	(void) access_mail(data, uri->uriDecoded, 0);
 }
 
 void
@@ -765,10 +762,8 @@ mime_access_headers_rcpt(URI *uri, void *_data)
 		TAG_ARGS, __func__, uri, uri->uriDecoded, _data
 	);
 
-	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->rcpts, copy))
+	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->recipients, copy))
 		free(copy);
-
-	(void) access_rcpt(data, uri->uriDecoded, 0);
 }
 
 static sfsistat
@@ -860,17 +855,30 @@ testURI(workspace data, URI *uri)
 	}
 
 	if (opt_access_check_body.value) {
-		const char **table;
-		for (table = (const char **) VectorBase(data->mails); *table != NULL; table++) {
-			if (access_body(data, ip, host, ":from:", *table) != SMFIS_CONTINUE)
+		ParsePath *saved_mail;
+		const char **table, **sender;
+
+		for (table = (const char **) VectorBase(data->senders); *table != NULL; table++) {
+			if (access_body_combo(data, ip, host, ":from:", *table) != SMFIS_CONTINUE)
 				goto error0;
 		}
-		for (table = (const char **) VectorBase(data->rcpts); *table != NULL; table++) {
-			if (access_body(data, ip, host, ":to:", *table) != SMFIS_CONTINUE)
-				goto error0;
+
+		saved_mail = data->work.mail;
+		for (sender = (const char **) VectorBase(data->senders); *sender != NULL; sender++) {
+			ParsePath *path;
+			if (parsePath(*sender, 0, 0, &path) == NULL)
+				continue;
+			data->work.mail = path;
+			for (table = (const char **) VectorBase(data->recipients); *table != NULL; table++) {
+				if (access_body_combo(data, ip, host, ":to:", *table) != SMFIS_CONTINUE)
+					goto error0;
+			}
+			free(path);
 		}
+		data->work.mail = saved_mail;
 	}
 
+	/* Simply single tag. */
 	access = smfAccessClient(&data->work, MILTER_NAME "-body:", host, ip, NULL, NULL);
 	switch (access) {
 	case SMDB_ACCESS_OK:
@@ -1079,13 +1087,13 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		goto error5;
 	VectorSetDestroyEntry(data->mail_tested, free);
 
-	if ((data->mails = VectorCreate(10)) == NULL)
+	if ((data->senders = VectorCreate(3)) == NULL)
 		goto error6;
-	VectorSetDestroyEntry(data->mails, free);
+	VectorSetDestroyEntry(data->senders, free);
 
-	if ((data->rcpts = VectorCreate(10)) == NULL)
+	if ((data->recipients = VectorCreate(10)) == NULL)
 		goto error7;
-	VectorSetDestroyEntry(data->rcpts, free);
+	VectorSetDestroyEntry(data->recipients, free);
 
 	if (smfi_setpriv(ctx, (void *) data) == MI_FAILURE) {
 		syslog(LOG_ERR, TAG_FORMAT "failed to save workspace", TAG_ARGS);
@@ -1138,9 +1146,9 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 
 	return SMFIS_CONTINUE;
 error8:
-	VectorDestroy(data->rcpts);
+	VectorDestroy(data->recipients);
 error7:
-	VectorDestroy(data->mails);
+	VectorDestroy(data->senders);
 error6:
 	VectorDestroy(data->mail_tested);
 error5:
@@ -1250,13 +1258,10 @@ filterMail(SMFICTX *ctx, char **args)
 	data->stop_uri_scanning = 0;
 	data->stop_mail_scanning = 0;
 	data->uri_found_rc = SMFIS_CONTINUE;
-	VectorRemoveAll(data->mails);
-	VectorRemoveAll(data->rcpts);
+	VectorRemoveAll(data->senders);
+	VectorRemoveAll(data->recipients);
 	VectorRemoveAll(data->ns_tested);
 	VectorRemoveAll(data->uri_tested);
-
-	free(data->from);
-	data->from = NULL;
 
 	mimeReset(data->mime);
 	data->work.skipMessage = data->work.skipConnection;
@@ -1264,7 +1269,7 @@ filterMail(SMFICTX *ctx, char **args)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterMail(%lx, %lx) MAIL='%s' auth='%s'", TAG_ARGS, (long) ctx, (long) args, args[0], TextEmpty(auth_authen));
 
-	if ((copy = strdup(args[0])) != NULL && VectorAdd(data->mails, copy))
+	if ((copy = strdup(args[0])) != NULL && VectorAdd(data->senders, copy))
 		free(copy);
 
 	if ((rc = access_mail(data, args[0], smfFlags)) != SMFIS_CONTINUE)
@@ -1318,7 +1323,7 @@ filterRcpt(SMFICTX *ctx, char **args)
 
 	smfLog(SMF_LOG_TRACE, TAG_FORMAT "filterRcpt(%lx, %lx) RCPT='%s'", TAG_ARGS, (long) ctx, (long) args, args[0]);
 
-	if ((copy = strdup(args[0])) != NULL && VectorAdd(data->rcpts, copy))
+	if ((copy = strdup(args[0])) != NULL && VectorAdd(data->recipients, copy))
 		free(copy);
 
 	if ((rc = access_rcpt(data, args[0], smfFlags)) != SMFIS_CONTINUE)
@@ -1380,36 +1385,16 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	(void) mimeNextCh(data->mime, '\n');
 
 	if (opt_access_check_headers.value) {
-		ParsePath *mail;
-
-		/* Save envelope-from. */
-		mail = data->work.mail;
-		if (TextInsensitiveCompare(name, "From") == 0) {
-			/* In case From: has multiple authors. */
-			if (data->from != NULL)
-				free(data->from);
-			data->work.mail = NULL;
-			(void) testString(data, name, value, mime_access_headers_mail);
-			/* Save header-From. */
-			data->from = data->work.mail;
-		} else if (TextInsensitiveCompare(name, "Sender") == 0) {
-			data->work.mail = NULL;
+		/* Parse and collect senders and recipients. */
+		if (TextInsensitiveCompare(name, "From") == 0
+		|| TextInsensitiveCompare(name, "Sender") == 0) {
 			(void) testString(data, name, value, mime_access_headers_mail);
 		}
 
 		else if (TextInsensitiveCompare(name, "To") == 0
 		|| TextInsensitiveCompare(name, "Cc") == 0) {
-			/* Swap envelope-from with header-from so
-			 * that combo from:to combo tag works with
-			 * From: header and To: and/or Cc:
-			 */
-			if (data->from != NULL)
-				data->work.mail = data->from;
 			(void) testString(data, name, value, mime_access_headers_rcpt);
 		}
-
-		/* Restore envelope-from. */
-		data->work.mail = mail;
 	}
 
 	for (table = (const char **) VectorBase(uri_bl_headers); *table != NULL; table++) {
@@ -1427,6 +1412,17 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	return SMFIS_CONTINUE;
 }
 
+static void
+vector_append_copy(Vector a, Vector b)
+{
+	char **item, *copy;
+	
+	for (item = (char **)VectorBase(b); *item != NULL; item++) {
+		if ((copy = strdup(*item)) != NULL && VectorAdd(a, copy))
+			free(copy);
+	}
+}
+
 static sfsistat
 filterEndHeaders(SMFICTX *ctx)
 {
@@ -1440,6 +1436,34 @@ filterEndHeaders(SMFICTX *ctx)
 	/* Force the header to body state transition. */
 	(void) mimeNextCh(data->mime, '\r');
 	(void) mimeNextCh(data->mime, '\n');
+
+	if (opt_access_check_headers.value) {
+		ParsePath *saved_mail;
+		const char **table, **sender;
+
+		VectorSort(data->senders, (CmpFn)TextInsensitiveCompare);
+		VectorUniq(data->senders, (CmpFn)TextInsensitiveCompare);		
+		for (table = (const char **) VectorBase(data->senders); *table != NULL; table++) {
+			if (access_mail(data, *table, 0) != SMFIS_CONTINUE)
+				return SMFIS_CONTINUE;
+		}
+
+		saved_mail = data->work.mail;
+		VectorSort(data->recipients, (CmpFn)TextInsensitiveCompare);
+		VectorUniq(data->recipients, (CmpFn)TextInsensitiveCompare);		
+		for (sender = (const char **) VectorBase(data->senders); *sender != NULL; sender++) {
+			ParsePath *path;
+			if (parsePath(*sender, 0, 0, &path) == NULL)
+				continue;
+			data->work.mail = path;
+			for (table = (const char **) VectorBase(data->recipients); *table != NULL; table++) {
+				if (access_rcpt(data, *table, 0) != SMFIS_CONTINUE)
+					return SMFIS_CONTINUE;
+			}
+			free(path);
+		}
+		data->work.mail = saved_mail;
+	}
 
 	return SMFIS_CONTINUE;
 }
@@ -1585,11 +1609,10 @@ filterClose(SMFICTX *ctx)
 		VectorDestroy(data->mail_tested);
 		VectorDestroy(data->uri_tested);
 		VectorDestroy(data->ns_tested);
-		VectorDestroy(data->rcpts);
-		VectorDestroy(data->mails);
+		VectorDestroy(data->recipients);
+		VectorDestroy(data->senders);
 		mimeFree(data->mime);
 		pdqClose(data->pdq);
-		free(data->from);
 		free(data);
 	}
 

@@ -129,21 +129,22 @@ example, to select only members of the DBL spam and phish lists
 <a name="opt_access_check_body"></a>
 <dt><span class="syntax">-access-check-body</span></dt>
 <dd>
-When enabled this option will perform supplemental
-<a href="#opt_access_map">access-db</a> lookups for
-<span class="tag">milter-link-body</span> family.
-For each body URI, IP, domain, or
-mail address would apply the supplemental lookups before the
-base body ones.  This allows special B/W list configurations.
+When enabled, this option will perform supplemental
+<span class="tag">milter-link-body</span> combo tag lookups
+for each URI, IP, domain, or mail address found in the message
+body.
+This allows special B/W list configurations.
 </dd>
 
 <a name="opt_access_check_headers"></a>
 <dt><span class="syntax">-access-check-headers</span></dt>
 <dd>
-When enabled this option will perform extra access-db lookups
-based on the Sender, From, To, and Cc headers using the <em>same</em> lookup
-tags currently used for SMTP envelope information as described by
-<a href="#opt_access_map">access-db</a>. This allows special B/W list configurations.
+When enabled, this option will perform extra access-db lookups
+with the Sender, From, To, and Cc headers using
+<span class="tag">milter-link-from:</span>,
+<span class="tag">milter-link-to:</span>, and combo tags,
+as described by <a href="#opt_access_map">access-db</a> option.
+This allows special B/W list configurations.
 </dd>
 
 <a name="opt_access_db"></a>
@@ -275,6 +276,19 @@ by the macro <code>{auth_authen}</code>.
 The string searched by the pattern list will be the sender's mail address.
 The empty form of <span class="tag">@PACKAGE_NAME@-Auth:</span> allows for a
 milter specific default only when <code>{auth_authen}</code> is defined.
+</dd>
+
+<a name="tag_body"></a>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>ip<span class="tag">:From:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>domain<span class="tag">:From:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>mail<span class="tag">:From:</span>mail</dt>
+
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>ip<span class="tag">:To:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>domain<span class="tag">:To:</span>mail</dt>
+<dt><span class="tag">@PACKAGE_NAME@-Body:</span>mail<span class="tag">:To:</span>mail</dt>
+<dd>
+The above are only applied when <a href="#opt_access_check_body">access-check-body</a> is enabled,
+followed by the simple <span class="tag">@PACKAGE_NAME@-Body:</span> tags.
 </dd>
 
 <a name="tag_body"></a>
