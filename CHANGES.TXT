@@ -14,6 +14,14 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.2--
+
+   !	Fixed access-check-headers and access-check-body incorrect
+   	handling of access_rcpt due to wrong equality test (== NULL
+   	should have been != NULL).  Added more logging.
+
+   !	Fixed access-check-headers sort/uniq of senders and recipients.
+
 --2.0.1--
 
    !	Fixed access-check-headers to handle arbitrary order of From,
