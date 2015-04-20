@@ -14,6 +14,13 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.1--
+
+   !	Fixed access-check-headers to handle arbitrary order of From,
+	Sender, To, and Cc headers.  Also milter-link-from:X:To:Y combos
+	are applied against X=(MAIL FROM, From, Sender) and Y=(RCPT TO,
+	To, Cc) sets.
+
 --2.0.0--
 
    *	Requires LibSnert 1.75.41
