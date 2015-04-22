@@ -289,6 +289,10 @@ milter specific default only when <code>{auth_authen}</code> is defined.
 <dd>
 The above are only applied when <a href="#opt_access_check_body">access-check-body</a> is enabled,
 followed by the simple <span class="tag">@PACKAGE_NAME@-Body:</span> tags.
+
+Used to black (REJECT) or ignore (OK) domains that make up
+mail addresses or URIs found within the header or body content
+of a message in combination with a sender or recipient.
 </dd>
 
 <a name="tag_body"></a>
@@ -300,6 +304,7 @@ Used to black (REJECT) or ignore (OK) domains that make up
 mail addresses or URIs found within the header or body content
 of a message.
 
+<p>
 This can be used to white list domains that are know to be good and so avoid redundant
 lookups. Consider listing your own web site that might appear in your signatures, common and
 popular sites like <tt>hotmail.com</tt> or <tt>yahoo.com</tt>, etc.
@@ -312,6 +317,7 @@ See
 <a href="#opt_uri_ns_bl">uri-ns-bl</a>, and
 <a href="#opt_uri_ns_a_bl">uri-ns-a-bl</a>
 options.
+</p>
 </dd>
 
 <a name="tag_connect_from"></a>

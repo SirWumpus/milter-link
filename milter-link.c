@@ -701,6 +701,7 @@ access_rcpt(workspace data, const char *value, long parseFlags)
 static sfsistat
 access_body_combo(workspace data, const char *ip, const char *host, const char *tag, const char *mail)
 {
+	char *copy;
 	const char *uri;
 	smdb_code access;
 
@@ -722,7 +723,17 @@ access_body_combo(workspace data, const char *ip, const char *host, const char *
 	switch (access) {
 	case SMDB_ACCESS_OK:
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "URI \"%s\" ignored", TAG_ARGS, uri);
-		return SMFIS_CONTINUE;
+		/* Only mark as seen ignored URI from combo tags so as
+		 * not to retest the URI by the simple milter-link-body:
+		 * tag.  The message is not white listed, only that URI
+		 *(host/domian) is white listed/ignored.
+		 */
+		if ((copy = strdup(uri)) != NULL && VectorAdd(data->uri_tested, copy))
+			free(copy);
+		/* Accept here does not accept message, simply indicates
+		 * we found an entry and can stop further combo lookups.
+		 */
+		return SMFIS_ACCEPT;
 
 	case SMDB_ACCESS_REJECT:
 		(void) snprintf(data->reply, sizeof (data->reply), "URI \"%s\" blocked", uri);

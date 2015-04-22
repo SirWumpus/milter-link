@@ -14,6 +14,12 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.3--
+
+   !	Fixed access-check-body handling of white listed/ignored URI
+   	in combination with from/to to ensure that URI is not retested
+   	by the simple milter-link-body: tag lookups.
+
 --2.0.2--
 
    !	Fixed access-check-headers and access-check-body incorrect
