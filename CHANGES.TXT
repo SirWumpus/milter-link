@@ -14,6 +14,11 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.4--
+
+   !	Restore filterEndMessage() logging or message disposition.
+   	Reported by Alex Broens.
+
 --2.0.3--
 
    !	Fixed access-check-body handling of white listed/ignored URI

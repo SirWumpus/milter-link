@@ -1655,6 +1655,8 @@ filterEndMessage(SMFICTX *ctx)
 		}
 	}
 
+	if (data->reply[0] != '\0')
+		smfLog(SMF_LOG_INFO, TAG_FORMAT "%s", TAG_ARGS, data->reply);
 	switch (data->policy) {
 	case POLICY_REJECT:
 		statCount(&stat_reject);
