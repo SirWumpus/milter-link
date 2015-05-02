@@ -897,8 +897,11 @@ testURI(workspace data, URI *uri)
 			}
 			data->work.mail = path;
 			for (table = (const char **) VectorBase(data->recipients); *table != NULL; table++) {
-				if (access_body_combo(data, ip, host, ":to:", *table) != SMFIS_CONTINUE)
+				if (access_body_combo(data, ip, host, ":to:", *table) != SMFIS_CONTINUE) {
+					data->work.mail = saved_mail;
+					free(path);
 					goto error0;
+				}
 			}
 			free(path);
 		}
@@ -1568,8 +1571,11 @@ filterEndHeaders(SMFICTX *ctx)
 			}
 			data->work.mail = path;
 			for (table = (const char **) VectorBase(data->recipients); *table != NULL; table++) {
-				if (access_rcpt(data, *table, 0) != SMFIS_CONTINUE)
+				if (access_rcpt(data, *table, 0) != SMFIS_CONTINUE) {
+					data->work.mail = saved_mail;
+					free(path);
 					return SMFIS_CONTINUE;
+				}
 			}
 			free(path);
 		}
