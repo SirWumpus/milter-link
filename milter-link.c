@@ -1877,9 +1877,12 @@ atExitCleanUp()
 	VectorDestroy(port_list);
 	free(ports);
 
+	optionFreeL(optTable, NULL);
 	smdbClose(smdbAccess);
 	smfAtExitCleanUp();
 	statFini();
+	pdqFini();
+	closelog();
 }
 
 void
@@ -1956,6 +1959,11 @@ main(int argc, char **argv)
 	smfOptRunGroup.initial = RUN_AS_GROUP;
 	smfOptWorkDir.initial = WORK_DIR;
 	smfOptMilterSocket.initial = "unix:" SOCKET_FILE;
+
+	if (atexit(atExitCleanUp)) {
+		syslog(LOG_ERR, "atexit() failed\n");
+		return EX_SOFTWARE;
+	}
 
 	/* Parse command line options looking for a file= option. */
 	optionInit(optTable, smfOptTable, NULL);
@@ -2067,11 +2075,6 @@ main(int argc, char **argv)
 
 	if (smfOptDaemon.value && smfStartBackgroundProcess())
 		return EX_SOFTWARE;
-
-	if (atexit(atExitCleanUp)) {
-		syslog(LOG_ERR, "atexit() failed\n");
-		return EX_SOFTWARE;
-	}
 
 	if (*smfOptAccessDb.string != '\0') {
 		SMDB_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DATABASE) ? 2 : 0);

@@ -98,7 +98,7 @@ build : ${MILTER}
 	@echo
 
 clean:
-	-rm -f *.o ${MILTER} *.exe ${MILTER}.cf
+	-rm -f *.o ${MILTER} *.exe ${MILTER}.cf d-${MILTER}
 	@echo
 	@echo '***************************************************************'
 	@echo Clean DONE
@@ -125,6 +125,10 @@ next-id:
 ${MILTER}: BUILD_ID.TXT $(SNERT) ${MILTER}.c
 	$(CC) -DMILTER_BUILD=$(MILTER_BUILD) -DMILTER_BUILD_STRING='"'$(MILTER_BUILD)'"' \
 	$(CFLAGS) $(LDFLAGS) -D_BUILT="\"`date +'%a, %d %b %Y %H:%M:%S %z'`\"" -o ${MILTER} ${MILTER}.c $(LIBS)
+
+d-${MILTER}: BUILD_ID.TXT $(SNERT) ../lib/sys/malloc$O ${MILTER}.c
+	$(CC) -DMILTER_BUILD=$(MILTER_BUILD) -DMILTER_BUILD_STRING='"'$(MILTER_BUILD)'"' \
+	$(CFLAGS) $(LDFLAGS) -D_BUILT="\"`date +'%a, %d %b %Y %H:%M:%S %z'`\"" -o d-${MILTER} ${MILTER}.c $(LIBS) ../lib/sys/malloc$O
 
 start:
 	./${MILTER}
