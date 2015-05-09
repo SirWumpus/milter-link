@@ -14,6 +14,18 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.5--
+
+   *	Requires LibSnert 1.75.43
+
+  !!	Fixed two memory leaks when using +access-check-headers and/or
+	+access-check-body.
+
+   !	Fix handling of literal plus in message headers mail addresses.
+
+   !	Fixed some minor memory leaks generated during initialisation,
+	but no impact on runtime.
+
 --2.0.4--
 
    !	Restore filterEndMessage() logging or message disposition.
