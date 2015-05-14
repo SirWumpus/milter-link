@@ -16,9 +16,16 @@ is no set schedule for releases.
 
 --2.0.6--
 
+   *	Requires LibSnert 1.75.44
+
    !	Fix oversized SMTP reply buffer.
 
    !	Reduces initial size of some lesser used Vectors.
+
+   !	Fix testURI() handling of acccess_body_combo() when an URI is
+	white listed/ignored and caused to whole messaged to be white
+	listed even if subsequent bad URI are seen.  Reported by Oli
+	Shacher
 
 --2.0.5--
 

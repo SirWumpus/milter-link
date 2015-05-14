@@ -728,7 +728,7 @@ access_body_combo(workspace data, const char *ip, const char *host, const char *
 		 * tag.  The message is not white listed, only that URI
 		 *(host/domian) is white listed/ignored.
 		 */
-		if ((copy = strdup(uri)) != NULL && VectorAdd(data->uri_tested, copy))
+		if (VectorAdd(data->uri_tested, copy = strdup(uri)))
 			free(copy);
 		/* Accept here does not accept message, simply indicates
 		 * we found an entry and can stop further combo lookups.
@@ -768,7 +768,7 @@ mime_collect_headers_mail(URI *uri, void *_data)
 		TAG_ARGS, __func__, uri->uriDecoded, _data
 	);
 
-	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->senders, copy))
+	if (VectorAdd(data->senders, copy = strdup(uri->uriDecoded)))
 		free(copy);
 }
 
@@ -783,7 +783,7 @@ mime_collect_headers_rcpt(URI *uri, void *_data)
 		TAG_ARGS, __func__, uri->uriDecoded, _data
 	);
 
-	if ((copy = strdup(uri->uriDecoded)) != NULL && VectorAdd(data->recipients, copy))
+	if (VectorAdd(data->recipients, copy = strdup(uri->uriDecoded)))
 		free(copy);
 }
 
@@ -880,8 +880,11 @@ testURI(workspace data, URI *uri)
 		const char **table, **sender;
 
 		for (table = (const char **) VectorBase(data->senders); *table != NULL; table++) {
-			if (access_body_combo(data, ip, host, ":from:", *table) != SMFIS_CONTINUE)
+			if ((rc = access_body_combo(data, ip, host, ":from:", *table)) != SMFIS_CONTINUE) {
+				if (rc == SMFIS_ACCEPT)
+					rc = SMFIS_CONTINUE;
 				goto error0;
+			}
 		}
 
 		saved_mail = data->work.mail;
@@ -897,7 +900,9 @@ testURI(workspace data, URI *uri)
 			}
 			data->work.mail = path;
 			for (table = (const char **) VectorBase(data->recipients); *table != NULL; table++) {
-				if (access_body_combo(data, ip, host, ":to:", *table) != SMFIS_CONTINUE) {
+				if ((rc = access_body_combo(data, ip, host, ":to:", *table)) != SMFIS_CONTINUE) {
+					if (rc == SMFIS_ACCEPT)
+						rc = SMFIS_CONTINUE;
 					data->work.mail = saved_mail;
 					free(path);
 					goto error0;
@@ -932,9 +937,11 @@ testURI(workspace data, URI *uri)
 		break;
 	}
 
-	if ((copy = strdup(uri->host)) != NULL && VectorAdd(data->uri_tested, copy))
+	if (VectorAdd(data->uri_tested, copy = strdup(uri->host)))
 		free(copy);
 
+	rc = SMFIS_REJECT;
+	
 	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL
 	||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL
 	||  (list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL
@@ -968,7 +975,7 @@ testURI(workspace data, URI *uri)
 			goto error1;
 		}
 
-		if ((copy = strdup(origin->host)) != NULL && VectorAdd(data->uri_tested, copy))
+		if (VectorAdd(data->uri_tested, copy = strdup(origin->host)))
 			free(copy);
 
 		dnsListLog(data->work.qid, origin->host, NULL);
@@ -1302,7 +1309,7 @@ filterMail(SMFICTX *ctx, char **args)
 	if ((rc = access_mail(data, args[0], smfFlags)) != SMFIS_CONTINUE)
 		return rc;
 
-	if ((copy = strdup(data->work.mail->address.string)) != NULL && VectorAdd(data->senders, copy))
+	if (VectorAdd(data->senders, copy = strdup(data->work.mail->address.string)))
 		free(copy);
 
 	access = smfAccessAuth(&data->work, MILTER_NAME "-auth:", auth_authen, args[0], NULL, NULL);
@@ -1356,7 +1363,7 @@ filterRcpt(SMFICTX *ctx, char **args)
 	if ((rc = access_rcpt(data, args[0], smfFlags)) != SMFIS_CONTINUE)
 		return rc;
 
-	if ((copy = strdup(data->work.rcpt->address.string)) != NULL && VectorAdd(data->recipients, copy))
+	if (VectorAdd(data->recipients, copy = strdup(data->work.rcpt->address.string)))
 		free(copy);
 
 	if (testMail(data, data->work.mail->address.string) == SMFIS_REJECT)
@@ -1440,17 +1447,6 @@ filterHeader(SMFICTX *ctx, char *name, char *value)
 	}
 
 	return SMFIS_CONTINUE;
-}
-
-static void
-vector_append_copy(Vector a, Vector b)
-{
-	char **item, *copy;
-	
-	for (item = (char **)VectorBase(b); *item != NULL; item++) {
-		if ((copy = strdup(*item)) != NULL && VectorAdd(a, copy))
-			free(copy);
-	}
 }
 
 /*
@@ -2073,8 +2069,10 @@ main(int argc, char **argv)
 
 	openlog(MILTER_NAME, LOG_PID, LOG_MAIL);
 
-	if (smfOptDaemon.value && smfStartBackgroundProcess())
+	if (smfOptDaemon.value && alt_daemon(1, 0)) {
+		syslog(LOG_ERR, "%s:%d %s (%d)", __FILE__, __LINE__, strerror(errno), errno);
 		return EX_SOFTWARE;
+	}
 
 	if (*smfOptAccessDb.string != '\0') {
 		SMDB_OPTIONS_SETTING((smfLogDetail & SMF_LOG_DATABASE) ? 2 : 0);
