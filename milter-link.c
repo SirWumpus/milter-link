@@ -164,7 +164,7 @@ typedef struct {
 	Vector ns_tested;			/* per connection, reset per message */
 	Vector uri_tested;			/* per connection, reset per message */
 	Vector mail_tested;			/* per connection */
-	char reply[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
+	char reply[SMTP_REPLY_LINE_LENGTH+1];	/* per message */
 } *workspace;
 
 
@@ -1109,19 +1109,19 @@ filterOpen(SMFICTX *ctx, char *client_name, _SOCK_ADDR *raw_client_addr)
 		goto error3;
 	VectorSetDestroyEntry(data->uri_tested, free);
 
-	if ((data->ns_tested = VectorCreate(10)) == NULL)
+	if ((data->ns_tested = VectorCreate(3)) == NULL)
 		goto error4;
 	VectorSetDestroyEntry(data->ns_tested, free);
 
-	if ((data->mail_tested = VectorCreate(10)) == NULL)
+	if ((data->mail_tested = VectorCreate(3)) == NULL)
 		goto error5;
 	VectorSetDestroyEntry(data->mail_tested, free);
 
-	if ((data->senders = VectorCreate(3)) == NULL)
+	if ((data->senders = VectorCreate(1)) == NULL)
 		goto error6;
 	VectorSetDestroyEntry(data->senders, free);
 
-	if ((data->recipients = VectorCreate(10)) == NULL)
+	if ((data->recipients = VectorCreate(2)) == NULL)
 		goto error7;
 	VectorSetDestroyEntry(data->recipients, free);
 
