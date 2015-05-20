@@ -14,6 +14,18 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.7--
+
+   *	Requires LibSnert 1.75.45
+
+   !	Fixed backwards compatibility issue with DNS list options no
+   	longer supporting comman separated items in dnsListCreate().
+   	Reported by Alex Broens.
+
+   !	X-Milter-Link-Report should only be added when a URI is found
+   	to be bad.  This used to be the case in 1.x.  Reported by
+   	Alex Broens.
+
 --2.0.6--
 
    *	Requires LibSnert 1.75.44

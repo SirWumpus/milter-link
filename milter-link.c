@@ -1657,8 +1657,10 @@ filterEndMessage(SMFICTX *ctx)
 		}
 	}
 
-	if (data->reply[0] != '\0')
+	if (data->reply[0] != '\0') {
 		smfLog(SMF_LOG_INFO, TAG_FORMAT "%s", TAG_ARGS, data->reply);
+		(void) smfHeaderSet(ctx, X_MILTER_REPORT, data->reply, 1, data->hasReport);
+	}
 	switch (data->policy) {
 	case POLICY_REJECT:
 		statCount(&stat_reject);
@@ -1684,8 +1686,6 @@ filterEndMessage(SMFICTX *ctx)
 		}
 		break;
 	}
-
-	(void) smfHeaderSet(ctx, X_MILTER_REPORT, data->reply, 1, data->hasReport);
 
 #ifdef DROPPED_ADD_HEADERS
 	if (optAddHeaders.value) {
