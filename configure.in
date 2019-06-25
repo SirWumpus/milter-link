@@ -12,7 +12,7 @@ dnl The autoconf version I learned to deal with.
 AC_PREREQ(2.59)
 
 dnl Yes I wrote this mess.
-SNERT_INIT(MILTER, [Copyright 2006, 2015 by Anthony Howe. All rights reserved.])
+SNERT_INIT(MILTER, [Copyright 2006, 2019 by Anthony Howe. All rights reserved.])
 
 AC_SUBST(snert_milter_t_equate, 'C:10s;R:1m;E:5m')
 
@@ -77,7 +77,7 @@ if test -f '../lib/version.sh' ; then
 	AC_SUBST(MD5SUM)
 	AC_SUBST(TAR_I)
 
-	AC_SUBST(HAVE_LIB_RT)
+	AC_SUBST(LIBS_RT)
 	AC_SUBST(HAVE_LIB_SEM)
 
 	AC_SUBST(CFLAGS_DB)
@@ -90,7 +90,7 @@ if test -f '../lib/version.sh' ; then
 
 	AC_SUBST(CFLAGS_SQLITE3)
 	AC_SUBST(LDFLAGS_SQLITE3)
-	AC_SUBST(HAVE_LIB_SQLITE3)
+	AC_SUBST(LIBS_SQLITE3)
 
 	AC_SUBST(CFLAGS_PTHREAD)
 	AC_SUBST(LDFLAGS_PTHREAD)
@@ -150,6 +150,7 @@ AC_MSG_RESULT([  --enable-run-user.....: $enable_run_user])
 AC_MSG_RESULT([  --enable-run-group....: $enable_run_group])
 AC_MSG_RESULT([  --enable-pid..........: $snert_pid_file])
 AC_MSG_RESULT([  --enable-socket.......: $snert_socket_file])
+AC_MSG_RESULT([  --with-sendmail.......: $with_sendmail])
 AC_MSG_RESULT([  CFLAGS................: $CFLAGS])
 AC_MSG_RESULT([  LDFLAGS...............: $LDFLAGS])
 AC_MSG_RESULT([  LIBS..................: $LIBS])
