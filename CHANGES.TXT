@@ -14,6 +14,13 @@ is no set schedule for releases.
    ?	Add support for "actions per bit", ie. tag, discard, reject.
    	Requested by Alex Broens.
 
+--2.0.9--
+
+   *	Requires LibSnert 1.75.56
+
+   !	Fix configure and makefile files with respect to recent
+   	changes to LibSnert.
+
 --2.0.7--
 
    *	Requires LibSnert 1.75.45
