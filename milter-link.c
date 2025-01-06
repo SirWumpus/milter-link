@@ -154,7 +154,7 @@ typedef struct {
 	int stop_mail_scanning;			/* per message */
 	sfsistat uri_found_rc;			/* per message */
 	char line[SMTP_TEXT_LINE_LENGTH+1];	/* general purpose */
-	char subject[SMTP_TEXT_LINE_LENGTH+1];	/* per message */
+	char subject[SMTP_TEXT_LINE_LENGTH/2];	/* per message */
 	const char *mime_string_name;		/* per string (headers, body) */
 
 	PDQ *pdq;				/* per connection */
