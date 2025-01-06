@@ -11,7 +11,8 @@
 .POSIX :
 
 MILTER 		= @PACKAGE_TARNAME@
-VERSION		= @PACKAGE_VERSION@.${MILTER_BUILD}
+COMMIT		:= $$(git describe --tags)
+VERSION		:= $$(git tag --list | sed -n '/^v[0-9]/s/v//p' | tail -n1)
 
 ########################################################################
 ### Pick one that best suits your system.
@@ -91,30 +92,15 @@ LIBS	:= @LIBS@ ${LIB_MILTER} ${LIB_SQLITE3} ${LIB_DB} ${LIB_SEM} ${LIB_PTHREAD}
 .MAIN: build
 
 build : ${MILTER}
-	@echo
-	@echo '***************************************************************'
-	@echo Build ${VERSION} DONE
-	@echo '***************************************************************'
-	@echo
 
 clean:
 	-rm -f *.o ${MILTER} *.exe ${MILTER}.cf d-${MILTER}
-	@echo
-	@echo '***************************************************************'
-	@echo Clean DONE
-	@echo '***************************************************************'
-	@echo
 
 distclean: clean
 	@echo '---------------------------------------------------------------'
 	-rm -f ${MILTER} ${MILTER}.md5 *.o *.obj *.tds *.log *.exe *.core
 	-rm -f sample.mc startup.sh install.sh config.h makefile
 	-rm -rf autom4te.cache config.status config.log configure.lineno
-	@echo
-	@echo '***************************************************************'
-	@echo Distribution Clean `pwd` DONE
-	@echo '***************************************************************'
-	@echo
 
 strip: build
 	strip ${MILTER}

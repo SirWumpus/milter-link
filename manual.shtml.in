@@ -479,7 +479,7 @@ accepting connections from mail and web servers.
 </p>
 
 <blockquote><pre>
-<span class="key"><span class="tag">Connect:</span>hananet.net</span>	<span class="value">!adsl-*-*.usr.hananet.net!REJECT</span>
+<span class="key"><span class="tag">Connect:</span>hananet.net</span>   <span class="value">!adsl-*-*.usr.hananet.net!REJECT</span>
 </pre></blockquote>
 
 <p>
@@ -490,7 +490,7 @@ a form being filled in.
 </p>
 
 <blockquote><pre>
-<span class="key"><span class="tag">Connect:</span>hananet.net</span>	<span class="value">!smtp*.hananet.net!OK !www*.hananet.net!OK REJECT</span>
+<span class="key"><span class="tag">Connect:</span>hananet.net</span>   <span class="value">!smtp*.hananet.net!OK !www*.hananet.net!OK REJECT</span>
 </pre></blockquote>
 
 <a name="access_about_spf"></a>
@@ -512,8 +512,8 @@ pattern matches; otherwise if the regular expression failed to match, REJECT the
 </p>
 
 <blockquote style="font-family: monospace;">
-<span class="key"><span class="tag">From:</span>grandma@aol.com</span>		<span class="value">OK</span>
-<br/><span class="key"><span class="tag">From:</span>aol.com</span>	<span class="value">/^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/SKIP REJECT</span>
+<span class="key"><span class="tag">From:</span>grandma@aol.com</span>      <span class="value">OK</span>
+<br/><span class="key"><span class="tag">From:</span>aol.com</span> <span class="value">/^[a-zA-Z0-9!#$&amp;'*+=?^_`{|}~.-]{3,16}@aol.com$/SKIP REJECT</span>
 </blockquote>
 
 <p>
@@ -569,10 +569,10 @@ mail still gets filtered:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
 <tr class="syntax">
-	<td width="65%" class="key"><span class="tag">To:</span>mx.example.com</td><td width="35%" class="value">RELAY</td>
+    <td width="65%" class="key"><span class="tag">To:</span>mx.example.com</td><td width="35%" class="value">RELAY</td>
 </tr>
 <tr class="syntax">
-	<td class="key"><span class="tag">@PACKAGE_NAME@-To:</span>mx.example.com</td><td class="value">SKIP</td>
+    <td class="key"><span class="tag">@PACKAGE_NAME@-To:</span>mx.example.com</td><td class="value">SKIP</td>
 </tr>
 </table>
 </blockquote>
@@ -584,51 +584,51 @@ Some additional examples:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="0" width="100%">
 <tr class="syntax" valign="top">
-	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>80.94</td>
-	<td width="60%" class="tline value" style="text-align: right;">[80.94.96.0/20]OK&nbsp;&nbsp;REJECT</td>
+    <td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>80.94</td>
+    <td width="60%" class="tline value" style="text-align: right;">[80.94.96.0/20]OK&nbsp;&nbsp;REJECT</td>
 </tr>
 <tr class="normal">
-	<td colspan="2">
-		<br/>
-		Accept connections from the netblock 80.94.96.0/20 (80.94.96.0 through to 80.94.111.255) and
-		rejecting anything else in 80.94.0.0/16.
-		<br/><br/>
-	</td>
+    <td colspan="2">
+        <br/>
+        Accept connections from the netblock 80.94.96.0/20 (80.94.96.0 through to 80.94.111.255) and
+        rejecting anything else in 80.94.0.0/16.
+        <br/><br/>
+    </td>
 </tr>
 <tr class="syntax" valign="top">
-	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>192.0.2</td>
-	<td width="60%" class="tline value" style="text-align: right;">/^192\.0\.2\.8[0-9]/OK&nbsp;&nbsp;REJECT</td>
+    <td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-Connect:</span>192.0.2</td>
+    <td width="60%" class="tline value" style="text-align: right;">/^192\.0\.2\.8[0-9]/OK&nbsp;&nbsp;REJECT</td>
 </tr>
 <tr class="normal">
-	<td colspan="2">
-		<br/>
-		Accept connections from 192.0.2.80 through to 192.0.2.89, reject everything else in 192.0.2.0/24.
-		<br/><br/>
-	</td>
+    <td colspan="2">
+        <br/>
+        Accept connections from 192.0.2.80 through to 192.0.2.89, reject everything else in 192.0.2.0/24.
+        <br/><br/>
+    </td>
 </tr>
 <tr class="syntax" valign="top">
-	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-From:</span>example.com</td>
-	<td width="60%" class="tline value" style="text-align: right;">/^john@.+/OK&nbsp;&nbsp;/^fred\+.*@.*/OK&nbsp;&nbsp;REJECT</td>
+    <td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-From:</span>example.com</td>
+    <td width="60%" class="tline value" style="text-align: right;">/^john@.+/OK&nbsp;&nbsp;/^fred\+.*@.*/OK&nbsp;&nbsp;REJECT</td>
 </tr>
 <tr class="normal">
-	<td colspan="2">
-		<br/>
-		Accept mail from &lt;john@example.com&gt; and &lt;fred@example.com&gt; when fred's address
-		contains a plus-detail in the address. Reject everything else from example.com.
-		<br/><br/>
-	</td>
+    <td colspan="2">
+        <br/>
+        Accept mail from &lt;john@example.com&gt; and &lt;fred@example.com&gt; when fred's address
+        contains a plus-detail in the address. Reject everything else from example.com.
+        <br/><br/>
+    </td>
 </tr>
 <tr class="syntax" valign="top">
-	<td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-To:</span>example.net</td>
-	<td width="60%" class="tline value" style="text-align: right;">!*+*@*!REJECT&nbsp;&nbsp;!*.smith@*!REJECT&nbsp;&nbsp;/^[0-9].*/REJECT</td>
+    <td width="40%" class="tline key"><span class="tag">@PACKAGE_NAME@-To:</span>example.net</td>
+    <td width="60%" class="tline value" style="text-align: right;">!*+*@*!REJECT&nbsp;&nbsp;!*.smith@*!REJECT&nbsp;&nbsp;/^[0-9].*/REJECT</td>
 </tr>
 <tr class="normal">
-	<td colspan="2" class="bline">
-		<br/>
-		Reject mail to example.net using a plus-detail address or to any user who's last name is "smith" or addresses
-		starting with a digit. No default given, so it is assumed to be SKIP.
-		<br/><br/>
-	</td>
+    <td colspan="2" class="bline">
+        <br/>
+        Reject mail to example.net using a plus-detail address or to any user who's last name is "smith" or addresses
+        starting with a digit. No default given, so it is assumed to be SKIP.
+        <br/><br/>
+    </td>
 </tr>
 </table>
 </blockquote>
@@ -651,24 +651,24 @@ then apply one of the following policies:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline param" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
+    <td class="tline bline param" width="40%">&nbsp;none</td>
+    <td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+    <td class="bline param">&nbsp;tag</td>
+    <td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+    <td class="bline param">&nbsp;quarantine</td>
+    <td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
+    <td class="bline param">&nbsp;reject</td>
+    <td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
+    <td class="bline param">&nbsp;discard</td>
+    <td class="bline">Discard the message.</td>
 </tr>
 </table>
 </blockquote>
@@ -805,24 +805,24 @@ mail-bl, then apply one of the following policies:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline param" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
+    <td class="tline bline param" width="40%">&nbsp;none</td>
+    <td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+    <td class="bline param">&nbsp;tag</td>
+    <td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+    <td class="bline param">&nbsp;quarantine</td>
+    <td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
+    <td class="bline param">&nbsp;reject</td>
+    <td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
+    <td class="bline param">&nbsp;discard</td>
+    <td class="bline">Discard the message.</td>
 </tr>
 </table>
 </blockquote>
@@ -847,6 +847,8 @@ the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
 <dt><span class="syntax">milter-timeout=</span><span class="param">7210</span></dt>
 <dd>The sendmail/milter I/O timeout in seconds.</dd>
 
+<!-- /* GH-8 Disable in uri.c untill HTTPS support is added. */
+
 <a name="opt_links_policy"></a>
 <dt><span class="syntax">links-policy=</span><span class="param">tag</span></dt>
 <dd>If <a href="#opt_links_test">+links-test</a> finds a broken URL, then apply one of the following policies:
@@ -854,24 +856,24 @@ the INPUT_MAIL_FILTER() macro in the sendmail.mc file. The accepted syntax is:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline param" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
+    <td class="tline bline param" width="40%">&nbsp;none</td>
+    <td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+    <td class="bline param">&nbsp;tag</td>
+    <td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+    <td class="bline param">&nbsp;quarantine</td>
+    <td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
+    <td class="bline param">&nbsp;reject</td>
+    <td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
+    <td class="bline param">&nbsp;discard</td>
+    <td class="bline">Discard the message.</td>
 </tr>
 </table>
 </blockquote>
@@ -890,6 +892,7 @@ reason then apply the policy given by <a href="#opt_links_policy">links-policy</
 <dd>Socket timeout used when testing HTTP links, see <a href="#opt_links_test">+links-test</a>.
 </dd>
 
+-->
 
 <a name="opt_pid_file"></a>
 <dt><span class="syntax">pid-file=</span><span class="param">/var/run/milter/@PACKAGE_NAME@.pid</span></dt>
@@ -1009,24 +1012,24 @@ then apply one of the following policies:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="3" width="100%">
 <tr valign="top" align="justify">
-	<td class="tline bline param" width="40%">&nbsp;none</td>
-	<td class="tline bline" width="60%">Do nothing.</td>
+    <td class="tline bline param" width="40%">&nbsp;none</td>
+    <td class="tline bline" width="60%">Do nothing.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;tag</td>
-	<td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
+    <td class="bline param">&nbsp;tag</td>
+    <td class="bline">Tag the message subject. See <a href="#opt_subject_tag">subject-tag</a>.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;quarantine</td>
-	<td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
+    <td class="bline param">&nbsp;quarantine</td>
+    <td class="bline">Quarantine the message. See sendmail's queue management options -qQ and -Q.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;reject</td>
-	<td class="bline">Reject the message.</td>
+    <td class="bline param">&nbsp;reject</td>
+    <td class="bline">Reject the message.</td>
 </tr>
 <tr valign="top" align="justify">
-	<td class="bline param">&nbsp;discard</td>
-	<td class="bline">Discard the message.</td>
+    <td class="bline param">&nbsp;discard</td>
+    <td class="bline">Discard the message.</td>
 </tr>
 </table>
 </blockquote>
@@ -1073,64 +1076,64 @@ Those mark with <span class="syntax">&sect;</span> have meaning for this milter.
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="2" width="100%">
 <tr>
-	<td class="tline" width="4%"><span class="syntax">&sect;</span></td>
-	<td class="tline" width="21%">info</td>
-	<td class="tline" width="75%">General info messages. (default) </td>
+    <td class="tline" width="4%"><span class="syntax">&sect;</span></td>
+    <td class="tline" width="21%">info</td>
+    <td class="tline" width="75%">General info messages. (default) </td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>trace</td>
-	<td>Trace progress through the milter.</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>trace</td>
+    <td>Trace progress through the milter.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>parse</td>
-	<td>Details from parsing addresses or special strings.</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>parse</td>
+    <td>Details from parsing addresses or special strings.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>debug</td>
-	<td>Lots of debug messages.</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>debug</td>
+    <td>Lots of debug messages.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>dialog</td>
-	<td>I/O from communications dialog</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>dialog</td>
+    <td>I/O from communications dialog</td>
 </tr>
 <tr>
-	<td><span class="syntax">&nbsp;</span></td>
-	<td>state</td>
-	<td>State transitions of message body scanner.</td>
+    <td><span class="syntax">&nbsp;</span></td>
+    <td>state</td>
+    <td>State transitions of message body scanner.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>dns</td>
-	<td>Trace &amp; debug of DNS operations</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>dns</td>
+    <td>Trace &amp; debug of DNS operations</td>
 </tr>
 <tr>
-	<td><span class="syntax">&nbsp;</span></td>
-	<td>cache</td>
-	<td>Cache get/put/gc operations.</td>
+    <td><span class="syntax">&nbsp;</span></td>
+    <td>cache</td>
+    <td>Cache get/put/gc operations.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>database</td>
-	<td>Sendmail database lookups.</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>database</td>
+    <td>Sendmail database lookups.</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>socket-fd</td>
-	<td>Socket open &amp; close calls</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>socket-fd</td>
+    <td>Socket open &amp; close calls</td>
 </tr>
 <tr>
-	<td><span class="syntax">&sect;</span></td>
-	<td>socket-all</td>
-	<td>All socket operations &amp; I/O</td>
+    <td><span class="syntax">&sect;</span></td>
+    <td>socket-all</td>
+    <td>All socket operations &amp; I/O</td>
 </tr>
 <tr>
-	<td class="bline"><span class="syntax">&sect;</span></td>
-	<td class="bline">libmilter</td>
-	<td class="bline">libmilter engine diagnostics</td>
+    <td class="bline"><span class="syntax">&sect;</span></td>
+    <td class="bline">libmilter</td>
+    <td class="bline">libmilter engine diagnostics</td>
 </tr>
 </table>
 </blockquote>
@@ -1220,24 +1223,24 @@ Download:
 <blockquote>
 <table border="0" cellspacing="0" cellpadding="2" width="100%">
 <tr>
-	<td class="tline bline"><a href="http://www.snertsoft.com/download/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz">@PACKAGE_NAME@/@PACKAGE_VERSION@</a></td>
-	<td class="tline bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
-	<td class="tline bline"><a href="CHANGES.TXT">Change Log</a></td>
+    <td class="tline bline"><a href="http://www.snertsoft.com/download/@PACKAGE_NAME@-@PACKAGE_VERSION@.tar.gz">@PACKAGE_NAME@/@PACKAGE_VERSION@</a></td>
+    <td class="tline bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
+    <td class="tline bline"><a href="CHANGES.TXT">Change Log</a></td>
 </tr>
 <tr>
-	<td class="bline"><a href="http://www.snertsoft.com/download/libsnert-current.tar.gz">LibSnert</a></td>
-	<td class="bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
-	<td class="bline"><a href="CHANGES-LIBSNERT.TXT">Change Log</a></td>
+    <td class="bline"><a href="http://www.snertsoft.com/download/libsnert-current.tar.gz">LibSnert</a></td>
+    <td class="bline"><a href="@PACKAGE_NAME@.md5">md5sum</a></td>
+    <td class="bline"><a href="CHANGES-LIBSNERT.TXT">Change Log</a></td>
 </tr>
 <tr>
-	<td class="bline"><a href="http://www.sendmail.org/">Sendmail 8.14</a></td>
-	<td class="bline">&nbsp;</td>
-	<td class="bline"><a href="http://www.sendmail.org/">http://www.sendmail.org/</a></td>
+    <td class="bline"><a href="http://www.sendmail.org/">Sendmail 8.14</a></td>
+    <td class="bline">&nbsp;</td>
+    <td class="bline"><a href="http://www.sendmail.org/">http://www.sendmail.org/</a></td>
 </tr>
 <tr>
-	<td class="bline"><a href="http://www.sleepycat.com/">Berkeley DB</a></td>
-	<td class="bline">&nbsp;</td>
-	<td class="bline"><a href="http://www.sleepycat.com/">http://www.sleepycat.com/</a></td>
+    <td class="bline"><a href="http://www.sleepycat.com/">Berkeley DB</a></td>
+    <td class="bline">&nbsp;</td>
+    <td class="bline"><a href="http://www.sleepycat.com/">http://www.sleepycat.com/</a></td>
 
 </tr>
 </table>
@@ -1345,31 +1348,31 @@ milter:milter before starting the accept socket thread.
 <blockquote>
 <table cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
-	<td width="40%">/etc/mail/</td><td width="20%">root:smmsp</td><td width="40%"><tt>0750 drwxr-x---</tt></td>
+    <td width="40%">/etc/mail/</td><td width="20%">root:smmsp</td><td width="40%"><tt>0750 drwxr-x---</tt></td>
 </tr>
 <tr>
-	<td>/etc/mail/access.db</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
+    <td>/etc/mail/access.db</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
 </tr>
 <tr>
-	<td>/etc/mail/sendmail.cf</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
+    <td>/etc/mail/sendmail.cf</td><td>root:smmsp</td><td><tt>0640 -rw-r-----</tt></td>
 </tr>
 <tr>
-	<td>/etc/mail/@PACKAGE_NAME@.cf</td><td>root:root</td><td><tt>0644 -rw-r--r--</tt></td>
+    <td>/etc/mail/@PACKAGE_NAME@.cf</td><td>root:root</td><td><tt>0644 -rw-r--r--</tt></td>
 </tr>
 <tr>
-	<td>/var/run/milter/@PACKAGE_NAME@.pid</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt></td>
+    <td>/var/run/milter/@PACKAGE_NAME@.pid</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt></td>
 </tr>
 <tr>
-	<td>/var/run/milter/@PACKAGE_NAME@.socket</td><td>milter:milter</td><td><tt>0644 srw-r--r--</tt></td>
+    <td>/var/run/milter/@PACKAGE_NAME@.socket</td><td>milter:milter</td><td><tt>0644 srw-r--r--</tt></td>
 </tr>
 <tr>
-	<td>/var/db/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (*BSD)</td>
+    <td>/var/db/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (*BSD)</td>
 </tr>
 <tr>
-	<td>/var/cache/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (linux)</td>
+    <td>/var/cache/@PACKAGE_NAME@</td><td>milter:milter</td><td><tt>0644 -rw-r--r--</tt> (linux)</td>
 </tr>
 <tr>
-	<td>/usr/local/libexec/@PACKAGE_NAME@</td><td>root:milter</td><td><tt>0550 -r-xr-x---</tt></td>
+    <td>/usr/local/libexec/@PACKAGE_NAME@</td><td>root:milter</td><td><tt>0550 -r-xr-x---</tt></td>
 </tr>
 </table>
 </blockquote>
@@ -1399,17 +1402,17 @@ AGREEMENT.
 
 <ol style="clear: both; padding: 10px 0px 0px 1.2em;">
 <li><h4>Definitions</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 ``Package'' means the identified above in source and/or binary
 form, any other machine readable materials provided (including,
 but not limited to documentation, sample files, data files),
 any updates or error corrections, and its derivative works.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 ``Organisation'' means a legal entity or an individual.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 ``You'' (or ``Your'') means an Organisation
  exercising rights under, and complying with all of the terms of,
  this License or a future version of this License issued under
@@ -1420,70 +1423,70 @@ any updates or error corrections, and its derivative works.
  of such entity, whether by contract or otherwise, or (b)
  ownership of more than fifty percent (50%) of the outstanding
  shares or beneficial ownership of such entity.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 ``SnertSoft'' means Anthony C. Howe situated in Montreal, Canada.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 ``SnertSoft &amp; Co.'' means SnertSoft and all authorised &amp;
 licensed partners, such as value-added resellers or appliance manufacturers.
-	</p></li>
-	</ol>
+    </p></li>
+    </ol>
 </li>
 
 <li><h4>Statement of Original Work</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 The Package is an original work written by SnertSoft,
 with exception of following third party code:
-	</p>
-		<ol>
-		<li><p>
+    </p>
+        <ol>
+        <li><p>
 MD5 routines written by L. Peter Deutsch, based on RFC 1321;
-		</p></li>
-		<li><p>
+        </p></li>
+        <li><p>
 SQLite3 package is written by D. Richard Hipp of Hwaci
 and is in the public domain.
-		</p></li>
-		<li><p>
+        </p></li>
+        <li><p>
 
 strnatcmp.c is written by Martin Pool of sourcefrog.net and
-     	has a BSD style license.
-		</p></li>
-		<li><p>
+        has a BSD style license.
+        </p></li>
+        <li><p>
 Protothreads headers originally written by Adam Dunkels and
 has a BSD style license.
-		</p></li>
+        </p></li>
 
-		</ol>
-	</li>
-	</ol>
+        </ol>
+    </li>
+    </ol>
 </li>
 
 
 <li><h4>License To Use</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 You may install and use this Package, without modifications,
 exclusively on machines for which You have purchased a license,
 provided You retain this notice, SnertSoft's copyright notice,
 any and all license control methods (<a href="#License_Control">see below</a>),
 and any links within the Package back to the most current online versions of
 this License and Disclaimer.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 You may copy, share, distribute, modify, and create derivative
 works from the user manuals and any related documentation
 solely for Your internal business purposes, such as in-house
 documentation, training manuals, or reference material.
-	</p></li>
-	</ol>
+    </p></li>
+    </ol>
 </li>
 
 
 <li><h4>Restrictions</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 Redistribution, including but not limited to books, CDROMS,
 download mirrors, floppy diskettes, hard disks, hardcopy print
 outs, online archives, solid state disks, streaming tapes, or
@@ -1493,14 +1496,14 @@ and all derivative works such as source patches, binaries,
 binary patches, or similar is expressly forbidden without prior
 written permission in hardcopy (ie. letter or fax) signed and dated
 by SnertSoft.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 It is expressly forbidden for You to use the Package, in whole
 or in part, in any other software or appliance without prior
 written permission in hardcopy (ie. letter or fax) signed and dated
 by SnertSoft.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 It is expressly forbidden for You to use the Package to develop
 any software or other technology having the same primary
 function as the Package, including but not limited to using the
@@ -1508,58 +1511,58 @@ Package in any development or test procedure that seeks to
 develop like software or other technology, or determine if such
 software or other technology performs in a similar manner as
 the Package.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 You may not sell, rent, lease, or transfer the Package to third
 parties without prior written permission in hardcopy (ie. letter or fax)
 signed and dated by SnertSoft.
-	</p></li>
-	</ol>
+    </p></li>
+    </ol>
 </li>
 
 
 <li><h4>Termination</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 This Agreement is effective until terminated. You may
 terminate this Agreement at any time by destroying all copies
 of the Package.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 This Agreement will terminate immediately without
 notice from SnertSoft if You fail to comply with any provision
 of this Agreement.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 Either party may terminate this Agreement
 immediately should any portion of the Package become, or in
 either party's opinion be likely to become, the subject of a
 claim of infringement of any intellectual property right. Upon
 Termination, You must destroy all copies of the Package.
-	</p></li>
-	</ol>
+    </p></li>
+    </ol>
 </li>
 
 
 <li><h4>Versions Of The License</h4>
-	<ol>
-	<li><p>
+    <ol>
+    <li><p>
 New Versions. SnertSoft may publish revised and/or new
 versions of the License from time to time. Each version will
 be given a distinguishing version number.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 Effect of New Versions. Once a version of the Package has been
 published under a particular version of the License, You may
 always continue to use it under the terms of that License
 version. You may also choose to use such Package under the
 terms of the most current version of the License published by SnertSoft.
-	</p></li>
-	<li><p>
+    </p></li>
+    <li><p>
 No one other than SnertSoft has the right to modify
 the terms applicable to the Package created under this License.
-	</p></li>
-	</ol>
+    </p></li>
+    </ol>
 </li>
 </ol>
 
