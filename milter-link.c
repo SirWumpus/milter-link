@@ -174,6 +174,8 @@ static const char black_listed_mail_format[] = BLACK_LISTED_MAIL_FORMAT;
 static Option optIntro		= { "",			NULL,			"\n# " MILTER_NAME "/" MILTER_VERSION "\n#\n# " MILTER_COPYRIGHT "\n#\n" };
 static Option opt_subject_tag	= { "subject-tag",	SUBJECT_TAG,		"Subject tag for messages identified as spam." };
 
+#ifdef ENABLE_HTTP_ORIGIN
+/* GH-8 Disable in uri.c untill HTTPS support is added. */
 static const char usage_links_policy[] =
   "Policy to apply if message contains a broken URL found by +test-links.\n"
 "# Specify one of none, tag, quarantine, reject, or discard.\n"
@@ -184,6 +186,7 @@ static Option opt_links_policy	= { "links-policy",	"tag",			usage_links_policy }
 static Option opt_links_test	= { "links-test",	"-",			"Verify HTTP links are valid and find origin server." };
 
 static Option opt_links_timeout	= { "links-timeout",	"60",			"Socket timeout used when testing HTTP links." };
+#endif
 
 static const char usage_date_required[] =
   "Set to one (1) to require a Date header; two (2) requires the header\n"
@@ -411,9 +414,11 @@ static Option *optTable[] = {
 	&opt_mail_bl_headers,
 	&opt_mail_bl_max,
 	&opt_mail_bl_policy,
+#ifdef ENABLE_HTTP_ORIGIN
 	&opt_links_policy,
 	&opt_links_test,
 	&opt_links_timeout,
+#endif
 	&opt_subject_tag,
 	&opt_uri_a_bl,
 	&opt_uri_bl,
@@ -748,7 +753,7 @@ access_body_combo(workspace data, const char *ip, const char *host, const char *
 	case SMDB_ACCESS_TEMPFAIL:
 		data->policy = POLICY_TAG;
 		break;
-		
+
 	default:
 		smfLog(SMF_LOG_DEBUG, TAG_FORMAT "URI \"%s\" unknown access value", TAG_ARGS, uri);
 		break;
@@ -941,7 +946,7 @@ testURI(workspace data, URI *uri)
 		free(copy);
 
 	rc = SMFIS_REJECT;
-	
+
 	if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, uri->host)) != NULL
 	||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, uri->host)) != NULL
 	||  (list_name = dnsListQueryNs(ns_bl_list, ns_ip_bl_list, data->pdq, data->ns_tested, uri->host)) != NULL
@@ -954,7 +959,7 @@ testURI(workspace data, URI *uri)
 	}
 
 	dnsListLog(data->work.qid, uri->host, NULL);
-
+#ifdef ENABLE_HTTP_ORIGIN
 	/* Test and follow redirections so verify that the link returns something valid. */
 	if (opt_links_test.value && (error = uriHttpOrigin(uri->uri, &origin)) == uriErrorLoop) {
 		(void) snprintf(data->reply, sizeof (data->reply), "broken URL \"%s\": %s", uri->uri, error);
@@ -962,7 +967,7 @@ testURI(workspace data, URI *uri)
 		statCount(&stat_link_fail);
 		goto error0;
 	}
-
+#endif
 	if (origin != NULL && origin->host != NULL && strcmp(uri->host, origin->host) != 0) {
 		if ((list_name = dnsListQueryName(d_bl_list, data->pdq, NULL, origin->host)) != NULL
 		||  (list_name = dnsListQueryDomain(uri_bl_list, data->pdq, NULL, opt_uri_bl_sub_domains.value, origin->host)) != NULL
@@ -1474,7 +1479,7 @@ reverse_mail_in_place(char *s)
 	int span;
 	char *label = s;
 
-	/* Reverse whole address; swaps local-part and domain. */	
+	/* Reverse whole address; swaps local-part and domain. */
 	TextReverse(label, -1);
 
 	/* Reverse each domain label, so that it reads normally, but
@@ -1493,14 +1498,14 @@ compare_tld_to_local(const void *_a, const void *_b)
 {
 	int diff;
 	char *a, *b;
-	
+
 	if (_a == NULL && _b != NULL)
 		return 1;
 	if (_a != NULL && _b == NULL)
 		return -1;
 	if (_a == NULL && _b == NULL)
 		return 0;
-		
+
 	if ((a = strdup(*(char **)_a)) == NULL) {
 		return 0;
 	}
@@ -1513,13 +1518,13 @@ compare_tld_to_local(const void *_a, const void *_b)
 
 	reverse_mail_in_place(a);
 	reverse_mail_in_place(b);
-	
+
 	diff = TextInsensitiveCompare(a, b);
 	smfLog(SMF_LOG_TRACE, "%s: %s %c %s", __func__, a, diff == 0 ? '=' : diff < 0 ? '<' : '>', b);
-	
+
 	free(b);
 	free(a);
-	
+
 	return diff;
 }
 
@@ -1550,7 +1555,7 @@ filterEndHeaders(SMFICTX *ctx)
 		const char **table, **sender;
 
 		VectorSort(data->senders, compare_tld_to_local);
-		VectorUniq(data->senders, compare_mail);		
+		VectorUniq(data->senders, compare_mail);
 		for (table = (const char **) VectorBase(data->senders); *table != NULL; table++) {
 			if (access_mail(data, *table, SMF_FLAG_STRICT_LITERAL_PLUS) != SMFIS_CONTINUE)
 				return SMFIS_CONTINUE;
@@ -1558,7 +1563,7 @@ filterEndHeaders(SMFICTX *ctx)
 
 		saved_mail = data->work.mail;
 		VectorSort(data->recipients, compare_tld_to_local);
-		VectorUniq(data->recipients, compare_mail);		
+		VectorUniq(data->recipients, compare_mail);
 		for (sender = (const char **) VectorBase(data->senders); *sender != NULL; sender++) {
 			ParsePath *path;
 			if ((error = parsePath(*sender, 0, 0, &path)) != NULL) {
@@ -2005,8 +2010,9 @@ main(int argc, char **argv)
 	(void) smfi_settimeout((int) smfOptMilterTimeout.value);
 	(void) smfSetLogDetail(smfOptVerbose.string);
 
+#ifdef ENABLE_HTTP_ORIGIN
 	uriSetTimeout(opt_links_timeout.value * 1000);
-
+#endif
 	d_bl_list = dnsListCreate(opt_domain_bl.string);
 	ns_bl_list = dnsListCreate(opt_uri_ns_bl.string);
 	ns_ip_bl_list = dnsListCreate(opt_uri_ns_a_bl.string);
@@ -2041,6 +2047,7 @@ main(int argc, char **argv)
 		break;
 	}
 
+#ifdef ENABLE_HTTP_ORIGIN
 	switch (*opt_links_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
 	case POLICY_QUARANTINE:
@@ -2052,6 +2059,7 @@ main(int argc, char **argv)
 		milter.handlers.xxfi_flags |= SMFIF_ADDHDRS|SMFIF_CHGHDRS;
 		break;
 	}
+#endif
 
 	switch (*opt_mail_bl_policy.string) {
 #ifdef HAVE_SMFI_QUARANTINE
